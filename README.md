@@ -1,19 +1,20 @@
 # Enterprise AI Operations Platform — AIOS
 
-A production-oriented enterprise AI platform for document intelligence, knowledge retrieval, workflow automation, and secure AI operations.
+AIOS is a production-oriented enterprise AI platform for document
+intelligence, knowledge retrieval, secure AI chat, and workflow automation.
+
+The project is being built as an end-to-end Forward Deployed Engineer
+portfolio project demonstrating software engineering, AI engineering,
+enterprise integrations, cloud infrastructure, DevOps, security, and
+customer-oriented product delivery.
 
 ## MVP Workflow
 
-User registration → organization workspace → PDF upload → document processing → RAG-based chat → cited answers.
-
-## Technology Stack
-
-- Next.js
-- TypeScript
-- FastAPI
-- Python
-- PostgreSQL
-- pgvector
-- Docker
-- GitHub Actions
-- OpenAI API
+```text
+User registration
+→ Organization workspace
+→ PDF upload
+→ Document extraction and chunking
+→ Vector embedding storage
+→ RAG-based chat
+→ Answers with document citations
