@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: aios-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aios_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aios_password}
+      POSTGRES_DB: ${POSTGRES_DB:-aios}
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - aios_postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-aios_user} -d ${POSTGRES_DB:-aios}"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+
+    container_name: aios-backend
+    restart: unless-stopped
+
+    environment:
+      APP_NAME: Enterprise AI Operations Platform
+      APP_VERSION: 0.1.0
+      API_V1_PREFIX: /api/v1
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+psycopg2://aios_user:aios_password@postgres:5432/aios
+      JWT_SECRET_KEY: development-only-change-this-secret
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    command:
+      [
+        "sh",
+        "-c",
+        "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+      ]
+
+volumes:
+  aios_postgres_data:
