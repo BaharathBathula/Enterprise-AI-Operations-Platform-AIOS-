@@ -1,1 +1,202 @@
+import uuid
 
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Response,
+    UploadFile,
+    status,
+)
+from sqlalchemy.orm import Session
+
+from app.api.dependencies import (
+    get_current_user,
+)
+from app.api.organization_dependencies import (
+    get_current_membership,
+)
+from app.db.database import get_db
+from app.models.organization_member import (
+    OrganizationMember,
+    OrganizationRole,
+)
+from app.models.user import User
+from app.schemas.document import (
+    DocumentResponse,
+)
+from app.services.document_service import (
+    create_document_record,
+    delete_document,
+    get_document,
+    list_documents,
+)
+from app.services.storage_service import (
+    FileTooLargeError,
+    UnsupportedFileTypeError,
+    save_uploaded_file,
+)
+
+
+router = APIRouter(
+    prefix="/organizations/{organization_id}/documents",
+    tags=["Documents"],
+)
+
+
+def require_document_write_access(
+    membership: OrganizationMember = Depends(
+        get_current_membership,
+    ),
+) -> OrganizationMember:
+    allowed_roles = {
+        OrganizationRole.owner,
+        OrganizationRole.admin,
+        OrganizationRole.member,
+    }
+
+    if membership.role not in allowed_roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Document write access required",
+        )
+
+    return membership
+
+
+@router.post(
+    "",
+    response_model=DocumentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_document(
+    organization_id: uuid.UUID,
+    file: UploadFile = File(...),
+    _: OrganizationMember = Depends(
+        require_document_write_access,
+    ),
+    current_user: User = Depends(
+        get_current_user,
+    ),
+    db: Session = Depends(get_db),
+) -> DocumentResponse:
+    original_filename = (
+        file.filename or "document.pdf"
+    )
+
+    content_type = (
+        file.content_type
+        or "application/octet-stream"
+    )
+
+    try:
+        (
+            storage_path,
+            file_size,
+            stored_filename,
+        ) = await save_uploaded_file(
+            file=file,
+            organization_id=organization_id,
+        )
+
+    except UnsupportedFileTypeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=str(exc),
+        ) from exc
+
+    except FileTooLargeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=str(exc),
+        ) from exc
+
+    return create_document_record(
+        db=db,
+        organization_id=organization_id,
+        user_id=current_user.id,
+        original_filename=original_filename,
+        stored_filename=stored_filename,
+        content_type=content_type,
+        file_size=file_size,
+        storage_path=storage_path,
+    )
+
+
+@router.get(
+    "",
+    response_model=list[DocumentResponse],
+)
+def get_documents(
+    organization_id: uuid.UUID,
+    _: OrganizationMember = Depends(
+        get_current_membership,
+    ),
+    db: Session = Depends(get_db),
+) -> list[Document]:
+    return list_documents(
+        db=db,
+        organization_id=organization_id,
+    )
+
+
+@router.get(
+    "/{document_id}",
+    response_model=DocumentResponse,
+)
+def get_document_by_id(
+    organization_id: uuid.UUID,
+    document_id: uuid.UUID,
+    _: OrganizationMember = Depends(
+        get_current_membership,
+    ),
+    db: Session = Depends(get_db),
+) -> Document:
+    document = get_document(
+        db=db,
+        organization_id=organization_id,
+        document_id=document_id,
+    )
+
+    if document is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+
+    return document
+
+
+@router.delete(
+    "/{document_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def remove_document(
+    organization_id: uuid.UUID,
+    document_id: uuid.UUID,
+    _: OrganizationMember = Depends(
+        require_document_write_access,
+    ),
+    db: Session = Depends(get_db),
+) -> Response:
+    document = get_document(
+        db=db,
+        organization_id=organization_id,
+        document_id=document_id,
+    )
+
+    if document is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+
+    delete_document(
+        db=db,
+        document=document,
+    )
+
+    return Response(
+        status_code=status.HTTP_204_NO_CONTENT,
+    )
