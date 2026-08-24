@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   Activity,
   Bot,
@@ -10,26 +11,32 @@ import {
 const navigation = [
   {
     label: "Overview",
+    href: "/",
     icon: Gauge,
   },
   {
     label: "Copilot",
+    href: "/copilot",
     icon: Bot,
   },
   {
     label: "Documents",
+    href: "/documents",
     icon: FileText,
   },
   {
     label: "Incidents",
+    href: "/incidents",
     icon: TriangleAlert,
   },
   {
     label: "Approvals",
+    href: "/approvals",
     icon: ShieldCheck,
   },
   {
     label: "Audit Activity",
+    href: "/audit",
     icon: Activity,
   },
 ];
@@ -97,36 +104,27 @@ export function Sidebar() {
           gap: 6,
         }}
       >
-        {navigation.map((item, index) => {
+        {navigation.map((item) => {
           const Icon = item.icon;
-          const active = index === 0;
 
           return (
-            <button
-              key={item.label}
-              type="button"
+            <Link
+              key={item.href}
+              href={item.href}
               style={{
                 width: "100%",
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
-                border: "none",
                 borderRadius: 10,
                 padding: "10px 12px",
-                cursor: "pointer",
-                background: active
-                  ? "#f1f3f7"
-                  : "transparent",
-                color: active
-                  ? "#111827"
-                  : "#667085",
-                fontWeight: active ? 600 : 500,
-                textAlign: "left",
+                color: "#667085",
+                fontWeight: 500,
               }}
             >
               <Icon size={18} />
               {item.label}
-            </button>
+            </Link>
           );
         })}
       </nav>
