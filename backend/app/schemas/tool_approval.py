@@ -34,3 +34,9 @@ class ToolApprovalReviewRequest(BaseModel):
         default=None,
         max_length=1000,
     )
+
+class ToolApprovalExecutionResponse(BaseModel):
+    success: bool
+    message: str | None = None
+    error: str | None = None
+    data: dict[str, Any]
