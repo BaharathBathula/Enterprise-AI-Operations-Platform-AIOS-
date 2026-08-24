@@ -25,16 +25,10 @@ class AgentOrchestrator:
         self,
         user_input: str,
     ) -> AgentDecision:
-        normalized = user_input.strip().lower()
+        cleaned_input = user_input.strip()
+        normalized = cleaned_input.lower()
 
-        if any(
-            phrase in normalized
-            for phrase in (
-                "create incident",
-                "open incident",
-                "raise incident",
-            )
-        ):
+        if self._is_incident_request(normalized):
             severity = self._extract_severity(
                 normalized
             )
@@ -43,8 +37,8 @@ class AgentOrchestrator:
                 action="tool",
                 tool_name="create_incident",
                 arguments={
-                    "title": user_input.strip()[:255],
-                    "description": user_input.strip(),
+                    "title": cleaned_input[:255],
+                    "description": cleaned_input,
                     "severity": severity,
                 },
             )
@@ -53,7 +47,7 @@ class AgentOrchestrator:
             action="tool",
             tool_name="knowledge_search",
             arguments={
-                "query": user_input.strip(),
+                "query": cleaned_input,
                 "limit": 5,
             },
         )
@@ -120,14 +114,45 @@ class AgentOrchestrator:
         )
 
     @staticmethod
+    def _is_incident_request(
+        text: str,
+    ) -> bool:
+        incident_pattern = (
+            r"\b(create|open|raise)\b"
+            r".{0,40}"
+            r"\bincident\b"
+        )
+
+        return (
+            re.search(
+                incident_pattern,
+                text,
+            )
+            is not None
+        )
+
+    @staticmethod
     def _extract_severity(
         text: str,
     ) -> str:
         patterns = {
-            "critical": r"\bcritical\b|\bp0\b|\bp1\b",
-            "high": r"\bhigh\b|\bp2\b",
-            "medium": r"\bmedium\b|\bp3\b",
-            "low": r"\blow\b|\bp4\b",
+            "critical": (
+                r"\bcritical\b"
+                r"|\bp0\b"
+                r"|\bp1\b"
+            ),
+            "high": (
+                r"\bhigh\b"
+                r"|\bp2\b"
+            ),
+            "medium": (
+                r"\bmedium\b"
+                r"|\bp3\b"
+            ),
+            "low": (
+                r"\blow\b"
+                r"|\bp4\b"
+            ),
         }
 
         for severity, pattern in patterns.items():
