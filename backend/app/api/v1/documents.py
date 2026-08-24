@@ -12,9 +12,7 @@ from fastapi import (
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
-from app.api.organization_dependencies import (
-    get_current_membership,
-)
+from app.api.organization_dependencies import get_current_membership
 from app.db.database import get_db
 from app.models.document import Document
 from app.models.organization_member import (
@@ -86,9 +84,7 @@ async def upload_document(
     ),
     db: Session = Depends(get_db),
 ) -> DocumentResponse:
-    original_filename = (
-        file.filename or "document.pdf"
-    )
+    original_filename = file.filename or "document.pdf"
 
     content_type = (
         file.content_type
@@ -298,16 +294,3 @@ def remove_document(
     return Response(
         status_code=status.HTTP_204_NO_CONTENT,
     )
-
-log_audit_event(
-    db=db,
-    action="document.processed",
-    resource_type="document",
-    organization_id=organization_id,
-    user_id=None,
-    resource_id=str(processed_document.id),
-    details={
-        "status": processed_document.status.value,
-        "page_count": processed_document.page_count,
-    },
-)
