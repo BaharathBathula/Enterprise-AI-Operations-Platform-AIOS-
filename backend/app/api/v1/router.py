@@ -18,7 +18,7 @@ from app.api.v1.tool_approvals import (
     router as tool_approvals_router,
 )
 from app.api.v1.users import router as users_router
-
+from app.api.v1.agent import router as agent_router
 
 api_router = APIRouter()
 
@@ -36,3 +36,4 @@ api_router.include_router(documents_router)
 api_router.include_router(conversations_router)
 api_router.include_router(chat_router)
 api_router.include_router(audit_router)
+api_router.include_router(agent_router)
