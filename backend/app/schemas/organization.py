@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.models.organization_member import OrganizationRole
 
@@ -32,3 +32,22 @@ class OrganizationResponse(BaseModel):
 class OrganizationMembershipResponse(BaseModel):
     organization: OrganizationResponse
     role: OrganizationRole
+
+
+class OrganizationMemberAdd(BaseModel):
+    email: EmailStr
+
+    role: OrganizationRole = OrganizationRole.member
+
+
+class OrganizationMemberRoleUpdate(BaseModel):
+    role: OrganizationRole
+
+
+class OrganizationMemberResponse(BaseModel):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    email: EmailStr
+    full_name: str
+    role: OrganizationRole
+    created_at: datetime
