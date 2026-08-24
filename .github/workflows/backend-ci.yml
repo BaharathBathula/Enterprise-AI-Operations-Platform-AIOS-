@@ -38,7 +38,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Ruff
+      - name: Run Ruff auto-fix check
+        run: |
+          ruff check app tests --fix
+
+      - name: Verify no Ruff violations remain
         run: |
           ruff check app tests
 
@@ -46,5 +50,6 @@ jobs:
         env:
           DATABASE_URL: sqlite:///./test.db
           JWT_SECRET_KEY: ci-test-secret-not-for-production
+          OPENAI_API_KEY: ""
         run: |
           pytest -v
