@@ -12,10 +12,16 @@ class Settings(BaseSettings):
     STORAGE_PATH: str = "storage"
 
     DATABASE_URL: str = (
-        "postgresql://aios_user:password@localhost:5432/aios"
+        "postgresql+psycopg2://aios_user:password@localhost:5432/aios"
     )
 
     OPENAI_API_KEY: str = ""
+
+    EMBEDDING_MODEL: str = "text-embedding-3-small"
+    EMBEDDING_DIMENSIONS: int = 1536
+
+    DOCUMENT_CHUNK_SIZE: int = 1200
+    DOCUMENT_CHUNK_OVERLAP: int = 200
 
     JWT_SECRET_KEY: str = ""
 
@@ -23,19 +29,10 @@ class Settings(BaseSettings):
 
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    OPENAI_API_KEY: str = ""
-
-EMBEDDING_MODEL: str = "text-embedding-3-small"
-
-EMBEDDING_DIMENSIONS: int = 1536
-
-DOCUMENT_CHUNK_SIZE: int = 1200
-
-DOCUMENT_CHUNK_OVERLAP: int = 200
-
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,
+        extra="ignore",
     )
 
 
