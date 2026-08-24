@@ -138,3 +138,47 @@ def test_agent_executes_safe_tool():
     assert result.data["query"] == (
         "What is the deductible?"
     )
+
+def test_agent_creates_approval_for_write_tool(
+    monkeypatch,
+):
+    orchestrator = create_orchestrator()
+
+    context = create_context()
+
+    approval_id = uuid.uuid4()
+
+    approval = ToolApproval(
+        id=approval_id,
+        organization_id=context.organization_id,
+        requested_by_user_id=context.user_id,
+        tool_name="create_incident",
+        arguments={},
+    )
+
+    def fake_create_tool_approval(**kwargs):
+        return approval
+
+    monkeypatch.setattr(
+        "app.agents.orchestrator.create_tool_approval",
+        fake_create_tool_approval,
+    )
+
+    result = orchestrator.handle(
+        user_input=(
+            "Create incident for critical "
+            "production outage"
+        ),
+        context=context,
+    )
+
+    assert result.success is False
+    assert result.error == "approval_required"
+
+    assert result.data["approval_id"] == (
+        str(approval_id)
+    )
+
+    assert result.data["tool_name"] == (
+        "create_incident"
+    )
