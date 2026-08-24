@@ -33,4 +33,7 @@ __all__ = [
     "User",
     "ToolApproval",
 "ToolApprovalStatus",
+    "Incident",
+"IncidentSeverity",
+"IncidentStatus",
 ]
