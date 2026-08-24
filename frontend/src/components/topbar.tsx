@@ -1,19 +1,42 @@
+"use client";
+
 import {
   Bell,
   ChevronDown,
+  LogOut,
   Search,
 } from "lucide-react";
+import {
+  useRouter,
+} from "next/navigation";
+
+import {
+  clearSession,
+} from "@/lib/session";
+
 
 export function Topbar() {
+  const router = useRouter();
+
+  function handleLogout() {
+    clearSession();
+
+    router.replace(
+      "/login",
+    );
+  }
+
   return (
     <header
       style={{
         height: 68,
         background: "#ffffff",
-        borderBottom: "1px solid #e4e7ec",
+        borderBottom:
+          "1px solid #e4e7ec",
         display: "flex",
         alignItems: "center",
-        justifyContent: "space-between",
+        justifyContent:
+          "space-between",
         padding: "0 28px",
       }}
     >
@@ -23,7 +46,8 @@ export function Topbar() {
           alignItems: "center",
           gap: 10,
           minWidth: 320,
-          border: "1px solid #e4e7ec",
+          border:
+            "1px solid #e4e7ec",
           borderRadius: 10,
           padding: "9px 12px",
           color: "#98a2b3",
@@ -106,6 +130,27 @@ export function Topbar() {
             size={16}
             color="#98a2b3"
           />
+
+          <button
+            type="button"
+            onClick={handleLogout}
+            title="Sign out"
+            aria-label="Sign out"
+            style={{
+              width: 34,
+              height: 34,
+              border:
+                "1px solid #d0d5dd",
+              borderRadius: 9,
+              background: "#ffffff",
+              color: "#667085",
+              display: "grid",
+              placeItems: "center",
+              cursor: "pointer",
+            }}
+          >
+            <LogOut size={15} />
+          </button>
         </div>
       </div>
     </header>
