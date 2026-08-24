@@ -26,6 +26,7 @@ from app.schemas.document import (
     DocumentProcessingResponse,
     DocumentResponse,
 )
+from app.services.audit_service import log_audit_event
 from app.services.document_processing_service import (
     DocumentProcessingError,
     process_document,
@@ -127,6 +128,19 @@ async def upload_document(
         storage_path=storage_path,
     )
 
+    log_audit_event(
+        db=db,
+        action="document.uploaded",
+        resource_type="document",
+        organization_id=organization_id,
+        user_id=current_user.id,
+        resource_id=str(document.id),
+        details={
+            "filename": document.original_filename,
+            "file_size": document.file_size,
+        },
+    )
+
     return document
 
 
@@ -184,6 +198,9 @@ def process_uploaded_document(
     _: OrganizationMember = Depends(
         require_document_write_access,
     ),
+    current_user: User = Depends(
+        get_current_user,
+    ),
     db: Session = Depends(get_db),
 ) -> DocumentProcessingResponse:
     document = get_document(
@@ -210,6 +227,19 @@ def process_uploaded_document(
             detail=str(exc),
         ) from exc
 
+    log_audit_event(
+        db=db,
+        action="document.processed",
+        resource_type="document",
+        organization_id=organization_id,
+        user_id=current_user.id,
+        resource_id=str(processed_document.id),
+        details={
+            "status": processed_document.status.value,
+            "page_count": processed_document.page_count,
+        },
+    )
+
     return DocumentProcessingResponse(
         id=processed_document.id,
         status=processed_document.status,
@@ -228,6 +258,9 @@ def remove_document(
     _: OrganizationMember = Depends(
         require_document_write_access,
     ),
+    current_user: User = Depends(
+        get_current_user,
+    ),
     db: Session = Depends(get_db),
 ) -> Response:
     document = get_document(
@@ -242,9 +275,24 @@ def remove_document(
             detail="Document not found",
         )
 
+    original_filename = document.original_filename
+    document_resource_id = str(document.id)
+
     delete_document(
         db=db,
         document=document,
+    )
+
+    log_audit_event(
+        db=db,
+        action="document.deleted",
+        resource_type="document",
+        organization_id=organization_id,
+        user_id=current_user.id,
+        resource_id=document_resource_id,
+        details={
+            "filename": original_filename,
+        },
     )
 
     return Response(
