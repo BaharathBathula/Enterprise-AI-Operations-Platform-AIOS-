@@ -14,6 +14,9 @@ from app.api.v1.organization_members import (
 from app.api.v1.organizations import (
     router as organizations_router,
 )
+from app.api.v1.tool_approvals import (
+    router as tool_approvals_router,
+)
 from app.api.v1.users import router as users_router
 
 
@@ -25,6 +28,9 @@ api_router.include_router(users_router)
 api_router.include_router(organizations_router)
 api_router.include_router(
     organization_members_router
+)
+api_router.include_router(
+    tool_approvals_router
 )
 api_router.include_router(documents_router)
 api_router.include_router(conversations_router)
