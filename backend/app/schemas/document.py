@@ -26,3 +26,9 @@ class DocumentResponse(BaseModel):
     model_config = ConfigDict(
         from_attributes=True,
     )
+
+class DocumentProcessingResponse(BaseModel):
+    id: uuid.UUID
+    status: DocumentStatus
+    page_count: int | None
+    processing_error: str | None
