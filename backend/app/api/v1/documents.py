@@ -298,3 +298,16 @@ def remove_document(
     return Response(
         status_code=status.HTTP_204_NO_CONTENT,
     )
+
+log_audit_event(
+    db=db,
+    action="document.processed",
+    resource_type="document",
+    organization_id=organization_id,
+    user_id=None,
+    resource_id=str(processed_document.id),
+    details={
+        "status": processed_document.status.value,
+        "page_count": processed_document.page_count,
+    },
+)
