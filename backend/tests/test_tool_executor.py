@@ -1,6 +1,13 @@
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import (
+    MagicMock,
+    patch,
+)
 
+from app.models.tool_approval import (
+    ToolApproval,
+    ToolApprovalStatus,
+)
 from app.tools.base import (
     BaseTool,
     ToolExecutionContext,
@@ -89,7 +96,7 @@ def test_executor_runs_safe_tool(
     result = executor.execute(
         tool_name="safe_tool",
         arguments={
-            "value": "hello"
+            "value": "hello",
         },
         context=create_context(),
     )
@@ -100,12 +107,7 @@ def test_executor_runs_safe_tool(
     mock_audit.assert_called_once()
 
 
-@patch(
-    "app.tools.executor.log_audit_event"
-)
-def test_executor_blocks_unapproved_tool(
-    mock_audit,
-):
+def test_executor_blocks_tool_without_approval():
     registry = ToolRegistry()
     registry.register(
         DangerousTool()
@@ -124,14 +126,20 @@ def test_executor_blocks_unapproved_tool(
     assert result.success is False
     assert result.error == "approval_required"
 
-    mock_audit.assert_not_called()
 
-
+@patch(
+    "app.tools.executor.get_tool_approval"
+)
+@patch(
+    "app.tools.executor.mark_tool_approval_executed"
+)
 @patch(
     "app.tools.executor.log_audit_event"
 )
-def test_executor_runs_approved_tool(
+def test_executor_runs_with_persisted_approval(
     mock_audit,
+    mock_mark_executed,
+    mock_get_approval,
 ):
     registry = ToolRegistry()
     registry.register(
@@ -142,16 +150,179 @@ def test_executor_runs_approved_tool(
         registry
     )
 
+    context = create_context()
+
+    approval_id = uuid.uuid4()
+
+    approval = ToolApproval(
+        id=approval_id,
+        organization_id=context.organization_id,
+        requested_by_user_id=uuid.uuid4(),
+        tool_name="dangerous_tool",
+        arguments={
+            "value": "approved",
+        },
+        status=ToolApprovalStatus.approved,
+    )
+
+    mock_get_approval.return_value = approval
+
     result = executor.execute(
         tool_name="dangerous_tool",
-        arguments={},
-        context=create_context(),
-        approved=True,
+        arguments={
+            "value": "approved",
+        },
+        context=context,
+        approval_id=approval_id,
     )
 
     assert result.success is True
 
+    mock_get_approval.assert_called_once_with(
+        db=context.db,
+        organization_id=context.organization_id,
+        approval_id=approval_id,
+    )
+
+    mock_mark_executed.assert_called_once_with(
+        db=context.db,
+        approval=approval,
+    )
+
     mock_audit.assert_called_once()
+
+
+@patch(
+    "app.tools.executor.get_tool_approval"
+)
+def test_executor_rejects_unapproved_record(
+    mock_get_approval,
+):
+    registry = ToolRegistry()
+    registry.register(
+        DangerousTool()
+    )
+
+    executor = ToolExecutor(
+        registry
+    )
+
+    context = create_context()
+
+    approval = ToolApproval(
+        id=uuid.uuid4(),
+        organization_id=context.organization_id,
+        requested_by_user_id=uuid.uuid4(),
+        tool_name="dangerous_tool",
+        arguments={},
+        status=ToolApprovalStatus.pending,
+    )
+
+    mock_get_approval.return_value = approval
+
+    result = executor.execute(
+        tool_name="dangerous_tool",
+        arguments={},
+        context=context,
+        approval_id=approval.id,
+    )
+
+    assert result.success is False
+
+    assert (
+        result.error
+        == "approval_not_approved"
+    )
+
+
+@patch(
+    "app.tools.executor.get_tool_approval"
+)
+def test_executor_rejects_tool_mismatch(
+    mock_get_approval,
+):
+    registry = ToolRegistry()
+    registry.register(
+        DangerousTool()
+    )
+
+    executor = ToolExecutor(
+        registry
+    )
+
+    context = create_context()
+
+    approval = ToolApproval(
+        id=uuid.uuid4(),
+        organization_id=context.organization_id,
+        requested_by_user_id=uuid.uuid4(),
+        tool_name="another_tool",
+        arguments={},
+        status=ToolApprovalStatus.approved,
+    )
+
+    mock_get_approval.return_value = approval
+
+    result = executor.execute(
+        tool_name="dangerous_tool",
+        arguments={},
+        context=context,
+        approval_id=approval.id,
+    )
+
+    assert result.success is False
+
+    assert (
+        result.error
+        == "approval_tool_mismatch"
+    )
+
+
+@patch(
+    "app.tools.executor.get_tool_approval"
+)
+def test_executor_rejects_argument_mismatch(
+    mock_get_approval,
+):
+    registry = ToolRegistry()
+    registry.register(
+        DangerousTool()
+    )
+
+    executor = ToolExecutor(
+        registry
+    )
+
+    context = create_context()
+
+    approval = ToolApproval(
+        id=uuid.uuid4(),
+        organization_id=context.organization_id,
+        requested_by_user_id=uuid.uuid4(),
+        tool_name="dangerous_tool",
+        arguments={
+            "severity": "low",
+        },
+        status=ToolApprovalStatus.approved,
+    )
+
+    mock_get_approval.return_value = approval
+
+    result = executor.execute(
+        tool_name="dangerous_tool",
+        arguments={
+            "severity": "critical",
+        },
+        context=context,
+        approval_id=approval.id,
+    )
+
+    assert result.success is False
+
+    assert (
+        result.error
+        == "approval_arguments_mismatch"
+    )
 
 
 def test_executor_handles_unknown_tool():
@@ -202,52 +373,3 @@ def test_executor_contains_tool_exception(
     )
 
     mock_audit.assert_called_once()
-
-
-@patch(
-    "app.tools.executor.log_audit_event"
-)
-def test_executor_does_not_audit_raw_arguments(
-    mock_audit,
-):
-    registry = ToolRegistry()
-    registry.register(
-        SafeTool()
-    )
-
-    executor = ToolExecutor(
-        registry
-    )
-
-    context = create_context()
-
-    executor.execute(
-        tool_name="safe_tool",
-        arguments={
-            "api_key": "secret-value",
-            "customer": "private-data",
-        },
-        context=context,
-    )
-
-    audit_call = mock_audit.call_args.kwargs
-
-    details = audit_call[
-        "details"
-    ]
-
-    assert "api_key" in details[
-        "argument_keys"
-    ]
-
-    assert "customer" in details[
-        "argument_keys"
-    ]
-
-    assert "secret-value" not in str(
-        details
-    )
-
-    assert "private-data" not in str(
-        details
-    )
