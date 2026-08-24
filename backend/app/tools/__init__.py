@@ -6,6 +6,7 @@ from app.tools.base import (
 from app.tools.default_registry import (
     create_default_tool_registry,
 )
+from app.tools.executor import ToolExecutor
 from app.tools.knowledge_search import (
     KnowledgeSearchTool,
 )
@@ -15,6 +16,7 @@ __all__ = [
     "BaseTool",
     "KnowledgeSearchTool",
     "ToolExecutionContext",
+    "ToolExecutor",
     "ToolRegistry",
     "ToolResult",
     "create_default_tool_registry",
