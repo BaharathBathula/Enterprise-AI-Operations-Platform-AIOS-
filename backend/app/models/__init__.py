@@ -13,6 +13,11 @@ from app.models.tool_approval import (
     ToolApproval,
     ToolApprovalStatus,
 )
+from app.models.incident import (
+    Incident,
+    IncidentSeverity,
+    IncidentStatus,
+)
 
 __all__ = [
     "AuditLog",
