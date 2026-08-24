@@ -1,3 +1,6 @@
+from app.tools.create_incident import (
+    CreateIncidentTool,
+)
 from app.tools.knowledge_search import (
     KnowledgeSearchTool,
 )
@@ -9,6 +12,10 @@ def create_default_tool_registry() -> ToolRegistry:
 
     registry.register(
         KnowledgeSearchTool()
+    )
+
+    registry.register(
+        CreateIncidentTool()
     )
 
     return registry
