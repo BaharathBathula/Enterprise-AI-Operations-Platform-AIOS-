@@ -11,20 +11,24 @@ from fastapi import (
 )
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import (
-    get_current_user,
-)
+from app.api.dependencies import get_current_user
 from app.api.organization_dependencies import (
     get_current_membership,
 )
 from app.db.database import get_db
+from app.models.document import Document
 from app.models.organization_member import (
     OrganizationMember,
     OrganizationRole,
 )
 from app.models.user import User
 from app.schemas.document import (
+    DocumentProcessingResponse,
     DocumentResponse,
+)
+from app.services.document_processing_service import (
+    DocumentProcessingError,
+    process_document,
 )
 from app.services.document_service import (
     create_document_record,
@@ -112,7 +116,7 @@ async def upload_document(
             detail=str(exc),
         ) from exc
 
-    return create_document_record(
+    document = create_document_record(
         db=db,
         organization_id=organization_id,
         user_id=current_user.id,
@@ -122,6 +126,8 @@ async def upload_document(
         file_size=file_size,
         storage_path=storage_path,
     )
+
+    return document
 
 
 @router.get(
@@ -166,6 +172,50 @@ def get_document_by_id(
         )
 
     return document
+
+
+@router.post(
+    "/{document_id}/process",
+    response_model=DocumentProcessingResponse,
+)
+def process_uploaded_document(
+    organization_id: uuid.UUID,
+    document_id: uuid.UUID,
+    _: OrganizationMember = Depends(
+        require_document_write_access,
+    ),
+    db: Session = Depends(get_db),
+) -> DocumentProcessingResponse:
+    document = get_document(
+        db=db,
+        organization_id=organization_id,
+        document_id=document_id,
+    )
+
+    if document is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+
+    try:
+        processed_document = process_document(
+            db=db,
+            document=document,
+        )
+
+    except DocumentProcessingError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+    return DocumentProcessingResponse(
+        id=processed_document.id,
+        status=processed_document.status,
+        page_count=processed_document.page_count,
+        processing_error=processed_document.processing_error,
+    )
 
 
 @router.delete(
