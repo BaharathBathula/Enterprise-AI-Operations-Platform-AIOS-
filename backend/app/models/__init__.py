@@ -9,6 +9,10 @@ from app.models.organization_member import (
     OrganizationRole,
 )
 from app.models.user import User
+from app.models.tool_approval import (
+    ToolApproval,
+    ToolApprovalStatus,
+)
 
 __all__ = [
     "AuditLog",
@@ -22,4 +26,6 @@ __all__ = [
     "OrganizationMember",
     "OrganizationRole",
     "User",
+    "ToolApproval",
+"ToolApprovalStatus",
 ]
