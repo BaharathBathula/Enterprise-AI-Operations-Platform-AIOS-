@@ -9,6 +9,8 @@ class Settings(BaseSettings):
 
     ENVIRONMENT: str = "development"
 
+    STORAGE_PATH: str = "storage"
+
     DATABASE_URL: str = (
         "postgresql://aios_user:password@localhost:5432/aios"
     )
