@@ -3,6 +3,9 @@ from app.tools.base import (
     ToolExecutionContext,
     ToolResult,
 )
+from app.tools.create_incident import (
+    CreateIncidentTool,
+)
 from app.tools.default_registry import (
     create_default_tool_registry,
 )
@@ -14,6 +17,7 @@ from app.tools.registry import ToolRegistry
 
 __all__ = [
     "BaseTool",
+    "CreateIncidentTool",
     "KnowledgeSearchTool",
     "ToolExecutionContext",
     "ToolExecutor",
