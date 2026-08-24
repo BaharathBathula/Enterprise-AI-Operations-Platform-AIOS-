@@ -21,3 +21,6 @@ openai>=1.98.0
 pgvector==0.4.1
 
 PyMuPDF==1.26.3
+
+ruff==0.12.7
+pytest-cov==6.2.1
