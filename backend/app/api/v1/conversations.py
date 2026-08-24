@@ -22,6 +22,7 @@ from app.schemas.conversation import (
     ConversationResponse,
     MessageResponse,
 )
+from app.services.audit_service import log_audit_event
 from app.services.conversation_service import (
     create_conversation,
     delete_conversation,
@@ -53,12 +54,26 @@ def create_new_conversation(
     ),
     db: Session = Depends(get_db),
 ) -> ConversationResponse:
-    return create_conversation(
+    conversation = create_conversation(
         db=db,
         organization_id=organization_id,
         current_user=current_user,
         title=request.title,
     )
+
+    log_audit_event(
+        db=db,
+        action="conversation.created",
+        resource_type="conversation",
+        organization_id=organization_id,
+        user_id=current_user.id,
+        resource_id=str(conversation.id),
+        details={
+            "title": conversation.title,
+        },
+    )
+
+    return conversation
 
 
 @router.get(
@@ -158,9 +173,27 @@ def remove_conversation(
             detail="Conversation not found",
         )
 
+    conversation_resource_id = str(
+        conversation.id
+    )
+
+    conversation_title = conversation.title
+
     delete_conversation(
         db=db,
         conversation=conversation,
+    )
+
+    log_audit_event(
+        db=db,
+        action="conversation.deleted",
+        resource_type="conversation",
+        organization_id=organization_id,
+        user_id=current_user.id,
+        resource_id=conversation_resource_id,
+        details={
+            "title": conversation_title,
+        },
     )
 
     return Response(
