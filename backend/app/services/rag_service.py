@@ -1,6 +1,7 @@
 from openai import OpenAI
 
 from app.core.config import settings
+from app.models.message import Message
 from app.services.retrieval_service import RetrievedChunk
 
 
@@ -31,10 +32,28 @@ def build_context(
     return "\n\n".join(sections)
 
 
+def build_conversation_history(
+    messages: list[Message],
+    limit: int = 10,
+) -> str:
+    recent_messages = messages[-limit:]
+
+    history: list[str] = []
+
+    for message in recent_messages:
+        history.append(
+            f"{message.role.value.upper()}: "
+            f"{message.content}"
+        )
+
+    return "\n".join(history)
+
+
 def generate_grounded_answer(
     *,
     question: str,
     chunks: list[RetrievedChunk],
+    messages: list[Message] | None = None,
 ) -> str:
     if not chunks:
         return (
@@ -52,27 +71,41 @@ def generate_grounded_answer(
         api_key=settings.OPENAI_API_KEY,
     )
 
-    context = build_context(chunks)
+    document_context = build_context(chunks)
+
+    conversation_history = build_conversation_history(
+        messages or [],
+    )
 
     system_prompt = """
 You are an enterprise document assistant.
 
-Answer the user's question using only the supplied context.
+Answer the user's question using only the supplied document context
+as the factual source of truth.
+
+Conversation history may be used only to understand references,
+follow-up questions, and conversational intent.
 
 Rules:
 1. Do not use outside knowledge.
-2. If the context does not contain enough information, say so.
-3. Do not invent facts.
-4. Keep the answer concise and precise.
-5. Refer to supporting sources as [Source 1], [Source 2], etc.
+2. Do not treat previous assistant messages as factual evidence.
+3. Use the document context as the factual authority.
+4. If the documents do not contain enough information, say so.
+5. Do not invent facts.
+6. Refer to supporting document sources as [Source 1],
+   [Source 2], etc.
+7. Keep answers concise and precise.
 """.strip()
 
     user_prompt = f"""
-Question:
+Conversation History:
+{conversation_history or "No previous conversation."}
+
+Current Question:
 {question}
 
-Context:
-{context}
+Document Context:
+{document_context}
 """.strip()
 
     try:
