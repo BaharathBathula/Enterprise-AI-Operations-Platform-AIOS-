@@ -1,7 +1,7 @@
+import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
-import uuid
 
 
 @dataclass
@@ -9,6 +9,7 @@ class ToolExecutionContext:
     organization_id: uuid.UUID
     user_id: uuid.UUID
     conversation_id: uuid.UUID | None = None
+    db: Any | None = None
 
 
 @dataclass
