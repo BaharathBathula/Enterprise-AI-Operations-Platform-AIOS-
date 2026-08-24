@@ -27,3 +27,17 @@ export type ToolApproval = {
   reviewed_at: string | null;
   executed_at: string | null;
 };
+
+export type TokenResponse = {
+  access_token: string;
+  token_type: string;
+};
+
+
+export type OrganizationMembership = {
+  organization: {
+    id: string;
+    name: string;
+  };
+  role: string;
+};
