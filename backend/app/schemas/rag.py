@@ -9,6 +9,8 @@ class RAGQuestionRequest(BaseModel):
         max_length=4000,
     )
 
+    conversation_id: uuid.UUID | None = None
+
     top_k: int = Field(
         default=5,
         ge=1,
@@ -24,5 +26,6 @@ class RAGSource(BaseModel):
 
 
 class RAGAnswerResponse(BaseModel):
+    conversation_id: uuid.UUID
     answer: str
     sources: list[RAGSource]
