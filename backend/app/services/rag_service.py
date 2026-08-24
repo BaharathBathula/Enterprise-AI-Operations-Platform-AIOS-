@@ -77,7 +77,7 @@ Context:
 
     try:
         response = client.responses.create(
-            model="gpt-4.1-mini",
+            model=settings.CHAT_MODEL,
             input=[
                 {
                     "role": "system",
