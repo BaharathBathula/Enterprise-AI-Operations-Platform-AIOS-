@@ -10,13 +10,20 @@ import {
 } from "lucide-react";
 import {
   FormEvent,
+  useEffect,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   ApiError,
   apiRequest,
 } from "@/lib/api";
+import {
+  clearSession,
+  getSession,
+  type SessionData,
+} from "@/lib/session";
 import type {
   AgentResponse,
 } from "@/lib/types";
@@ -37,36 +44,60 @@ function createMessageId(): string {
 
 
 export function CopilotClient() {
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  const [messages, setMessages] = useState<
-    ChatMessage[]
-  >([
-    {
-      id: "welcome",
-      role: "assistant",
-      content:
-        "Ask me about enterprise knowledge or request a governed operational action.",
-    },
-  ]);
+  const [session, setSession] =
+    useState<SessionData | null>(null);
+
+  const [sessionReady, setSessionReady] =
+    useState(false);
+
+  const [input, setInput] =
+    useState("");
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [messages, setMessages] =
+    useState<ChatMessage[]>([
+      {
+        id: "welcome",
+        role: "assistant",
+        content:
+          "Ask me about enterprise knowledge or request a governed operational action.",
+      },
+    ]);
+
+
+  useEffect(() => {
+    const currentSession =
+      getSession();
+
+    if (!currentSession) {
+      router.replace("/login");
+      return;
+    }
+
+    setSession(currentSession);
+    setSessionReady(true);
+  }, [router]);
+
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
 
-    const message = input.trim();
+    const message =
+      input.trim();
 
-    if (!message || loading) {
+    if (
+      !message ||
+      loading ||
+      !session
+    ) {
       return;
     }
-
-    const organizationId =
-      process.env.NEXT_PUBLIC_ORGANIZATION_ID;
-
-    const token =
-      process.env.NEXT_PUBLIC_DEMO_ACCESS_TOKEN;
 
     const userMessage: ChatMessage = {
       id: createMessageId(),
@@ -82,28 +113,14 @@ export function CopilotClient() {
     setInput("");
     setLoading(true);
 
-    if (!organizationId) {
-      setMessages((current) => [
-        ...current,
-        {
-          id: createMessageId(),
-          role: "assistant",
-          content:
-            "AIOS is missing NEXT_PUBLIC_ORGANIZATION_ID configuration.",
-        },
-      ]);
-
-      setLoading(false);
-      return;
-    }
-
     try {
       const response =
         await apiRequest<AgentResponse>(
-          `/organizations/${organizationId}/agent`,
+          `/organizations/${session.organizationId}/agent`,
           {
             method: "POST",
-            token,
+            token:
+              session.accessToken,
             body: JSON.stringify({
               message,
             }),
@@ -111,37 +128,48 @@ export function CopilotClient() {
         );
 
       const approvalId =
-        typeof response.data.approval_id ===
-        "string"
-          ? response.data.approval_id
+        typeof response.data
+          .approval_id === "string"
+          ? response.data
+              .approval_id
           : undefined;
 
       const toolName =
-        typeof response.data.tool_name ===
-        "string"
-          ? response.data.tool_name
+        typeof response.data
+          .tool_name === "string"
+          ? response.data
+              .tool_name
           : undefined;
 
       let content =
         response.message ??
         "AIOS completed the request.";
 
-      if (response.error === "approval_required") {
+      if (
+        response.error ===
+        "approval_required"
+      ) {
         content =
           response.message ??
           "This action requires human approval.";
-      } else if (!response.success) {
+      } else if (
+        !response.success
+      ) {
         content =
           response.error ??
           "AIOS could not complete the request.";
       } else if (
-        typeof response.data.answer === "string"
+        typeof response.data
+          .answer === "string"
       ) {
-        content = response.data.answer;
+        content =
+          response.data.answer;
       } else if (
-        typeof response.data.message === "string"
+        typeof response.data
+          .message === "string"
       ) {
-        content = response.data.message;
+        content =
+          response.data.message;
       }
 
       setMessages((current) => [
@@ -155,11 +183,26 @@ export function CopilotClient() {
         },
       ]);
     } catch (error) {
-      let message =
+      if (
+        error instanceof ApiError &&
+        error.status === 401
+      ) {
+        clearSession();
+
+        router.replace(
+          "/login",
+        );
+
+        return;
+      }
+
+      let errorMessage =
         "Unable to reach the AIOS backend.";
 
-      if (error instanceof ApiError) {
-        message =
+      if (
+        error instanceof ApiError
+      ) {
+        errorMessage =
           `Request failed (${error.status}): ` +
           error.detail;
       }
@@ -169,7 +212,8 @@ export function CopilotClient() {
         {
           id: createMessageId(),
           role: "assistant",
-          content: message,
+          content:
+            errorMessage,
         },
       ]);
     } finally {
@@ -177,23 +221,59 @@ export function CopilotClient() {
     }
   }
 
+
+  if (!sessionReady) {
+    return (
+      <section
+        className="card"
+        style={{
+          minHeight:
+            "calc(100vh - 132px)",
+          display: "grid",
+          placeItems: "center",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            color: "#667085",
+            fontSize: 12,
+          }}
+        >
+          <Loader2
+            size={16}
+            className="spin"
+          />
+
+          Loading AIOS session...
+        </div>
+      </section>
+    );
+  }
+
+
   return (
     <section
       className="card"
       style={{
         display: "flex",
         flexDirection: "column",
-        minHeight: "calc(100vh - 132px)",
+        minHeight:
+          "calc(100vh - 132px)",
         overflow: "hidden",
       }}
     >
       <div
         style={{
           padding: "20px 22px",
-          borderBottom: "1px solid #e4e7ec",
+          borderBottom:
+            "1px solid #e4e7ec",
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent:
+            "space-between",
         }}
       >
         <div>
@@ -213,7 +293,8 @@ export function CopilotClient() {
               fontSize: 12,
             }}
           >
-            Live enterprise agent interface
+            Authenticated enterprise
+            agent interface
           </div>
         </div>
 
@@ -246,19 +327,22 @@ export function CopilotClient() {
           overflowY: "auto",
         }}
       >
-        {messages.map((message) => (
-          <MessageBubble
-            key={message.id}
-            message={message}
-          />
-        ))}
+        {messages.map(
+          (message) => (
+            <MessageBubble
+              key={message.id}
+              message={message}
+            />
+          ),
+        )}
 
         {loading && (
           <div
             style={{
               display: "flex",
               gap: 10,
-              alignItems: "center",
+              alignItems:
+                "center",
               color: "#667085",
               fontSize: 12,
             }}
@@ -267,6 +351,7 @@ export function CopilotClient() {
               size={16}
               className="spin"
             />
+
             AIOS is processing...
           </div>
         )}
@@ -275,7 +360,8 @@ export function CopilotClient() {
       <form
         onSubmit={handleSubmit}
         style={{
-          borderTop: "1px solid #e4e7ec",
+          borderTop:
+            "1px solid #e4e7ec",
           padding: 16,
           background: "#ffffff",
         }}
@@ -285,7 +371,8 @@ export function CopilotClient() {
             display: "flex",
             alignItems: "flex-end",
             gap: 10,
-            border: "1px solid #d0d5dd",
+            border:
+              "1px solid #d0d5dd",
             borderRadius: 12,
             padding: 10,
           }}
@@ -293,7 +380,9 @@ export function CopilotClient() {
           <textarea
             value={input}
             onChange={(event) =>
-              setInput(event.target.value)
+              setInput(
+                event.target.value,
+              )
             }
             placeholder="Ask AIOS or request an operational action..."
             rows={2}
@@ -305,7 +394,8 @@ export function CopilotClient() {
               resize: "none",
               fontSize: 13,
               lineHeight: 1.5,
-              background: "transparent",
+              background:
+                "transparent",
             }}
           />
 
@@ -313,7 +403,8 @@ export function CopilotClient() {
             type="submit"
             disabled={
               loading ||
-              input.trim().length === 0
+              input.trim()
+                .length === 0
             }
             aria-label="Send message"
             style={{
@@ -321,7 +412,8 @@ export function CopilotClient() {
               height: 38,
               borderRadius: 10,
               border: "none",
-              background: "#111827",
+              background:
+                "#111827",
               color: "#ffffff",
               display: "grid",
               placeItems: "center",
@@ -330,7 +422,8 @@ export function CopilotClient() {
                 : "pointer",
               opacity:
                 loading ||
-                input.trim().length === 0
+                input.trim()
+                  .length === 0
                   ? 0.5
                   : 1,
             }}
@@ -349,7 +442,8 @@ function MessageBubble({
 }: {
   message: ChatMessage;
 }) {
-  const isUser = message.role === "user";
+  const isUser =
+    message.role === "user";
 
   return (
     <div
@@ -422,20 +516,25 @@ function MessageBubble({
                 padding: 12,
                 borderRadius: 10,
                 background: "#fffaeb",
-                border: "1px solid #fedf89",
+                border:
+                  "1px solid #fedf89",
               }}
             >
               <div
                 style={{
                   display: "flex",
-                  alignItems: "center",
+                  alignItems:
+                    "center",
                   gap: 6,
                   fontSize: 11,
                   fontWeight: 700,
                   color: "#b54708",
                 }}
               >
-                <Sparkles size={13} />
+                <Sparkles
+                  size={13}
+                />
+
                 Human approval required
               </div>
 
