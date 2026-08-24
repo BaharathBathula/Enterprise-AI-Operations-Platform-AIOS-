@@ -1,95 +1,54 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user
+from app.core.security import decode_access_token
 from app.db.database import get_db
-from app.models.organization_member import OrganizationMember
 from app.models.user import User
-from app.schemas.organization import (
-    OrganizationCreate,
-    OrganizationMembershipResponse,
-    OrganizationResponse,
-)
-from app.services.organization_service import (
-    OrganizationAlreadyExistsError,
-    create_organization,
-    get_membership,
-    get_user_memberships,
+
+
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/api/v1/auth/login",
 )
 
 
-router = APIRouter(
-    prefix="/organizations",
-    tags=["Organizations"],
-)
-
-
-@router.post(
-    "",
-    response_model=OrganizationResponse,
-    status_code=status.HTTP_201_CREATED,
-)
-def create_new_organization(
-    organization_data: OrganizationCreate,
-    current_user: User = Depends(get_current_user),
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
-) -> OrganizationResponse:
+) -> User:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate authentication credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
     try:
-        return create_organization(
-            db=db,
-            organization_data=organization_data,
-            current_user=current_user,
-        )
-    except OrganizationAlreadyExistsError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(exc),
-        ) from exc
+        payload = decode_access_token(token)
 
+        subject = payload.get("sub")
 
-@router.get(
-    "",
-    response_model=list[OrganizationMembershipResponse],
-)
-def list_my_organizations(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> list[OrganizationMembershipResponse]:
-    memberships = get_user_memberships(
-        db=db,
-        user_id=current_user.id,
+        if subject is None:
+            raise credentials_exception
+
+        user_id = uuid.UUID(subject)
+
+    except (ValueError, TypeError):
+        raise credentials_exception
+
+    user = db.get(
+        User,
+        user_id,
     )
 
-    return [
-        OrganizationMembershipResponse(
-            organization=membership.organization,
-            role=membership.role,
-        )
-        for membership in memberships
-    ]
+    if user is None:
+        raise credentials_exception
 
-
-@router.get(
-    "/{organization_id}",
-    response_model=OrganizationResponse,
-)
-def get_organization(
-    organization_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> OrganizationResponse:
-    membership: OrganizationMember | None = get_membership(
-        db=db,
-        organization_id=organization_id,
-        user_id=current_user.id,
-    )
-
-    if membership is None:
+    if not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Organization not found",
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive",
         )
 
-    return membership.organization
+    return user
