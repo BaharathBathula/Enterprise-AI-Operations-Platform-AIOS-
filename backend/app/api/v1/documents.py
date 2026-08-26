@@ -12,7 +12,10 @@ from fastapi import (
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
-from app.api.organization_dependencies import get_current_membership
+from app.api.organization_dependencies import (
+    get_current_membership,
+    require_organization_admin,
+)
 from app.db.database import get_db
 from app.models.document import Document
 from app.models.organization_member import (
@@ -84,7 +87,10 @@ async def upload_document(
     ),
     db: Session = Depends(get_db),
 ) -> DocumentResponse:
-    original_filename = file.filename or "document.pdf"
+    original_filename = (
+        file.filename
+        or "document.pdf"
+    )
 
     content_type = (
         file.content_type
@@ -103,13 +109,17 @@ async def upload_document(
 
     except UnsupportedFileTypeError as exc:
         raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            status_code=(
+                status.HTTP_415_UNSUPPORTED_MEDIA_TYPE
+            ),
             detail=str(exc),
         ) from exc
 
     except FileTooLargeError as exc:
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=(
+                status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+            ),
             detail=str(exc),
         ) from exc
 
@@ -132,8 +142,10 @@ async def upload_document(
         user_id=current_user.id,
         resource_id=str(document.id),
         details={
-            "filename": document.original_filename,
-            "file_size": document.file_size,
+            "filename":
+                document.original_filename,
+            "file_size":
+                document.file_size,
         },
     )
 
@@ -219,7 +231,9 @@ def process_uploaded_document(
 
     except DocumentProcessingError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=(
+                status.HTTP_422_UNPROCESSABLE_ENTITY
+            ),
             detail=str(exc),
         ) from exc
 
@@ -229,18 +243,26 @@ def process_uploaded_document(
         resource_type="document",
         organization_id=organization_id,
         user_id=current_user.id,
-        resource_id=str(processed_document.id),
+        resource_id=str(
+            processed_document.id
+        ),
         details={
-            "status": processed_document.status.value,
-            "page_count": processed_document.page_count,
+            "status":
+                processed_document.status.value,
+            "page_count":
+                processed_document.page_count,
         },
     )
 
     return DocumentProcessingResponse(
         id=processed_document.id,
         status=processed_document.status,
-        page_count=processed_document.page_count,
-        processing_error=processed_document.processing_error,
+        page_count=(
+            processed_document.page_count
+        ),
+        processing_error=(
+            processed_document.processing_error
+        ),
     )
 
 
@@ -252,7 +274,7 @@ def remove_document(
     organization_id: uuid.UUID,
     document_id: uuid.UUID,
     _: OrganizationMember = Depends(
-        require_document_write_access,
+        require_organization_admin,
     ),
     current_user: User = Depends(
         get_current_user,
@@ -271,8 +293,13 @@ def remove_document(
             detail="Document not found",
         )
 
-    original_filename = document.original_filename
-    document_resource_id = str(document.id)
+    original_filename = (
+        document.original_filename
+    )
+
+    document_resource_id = str(
+        document.id
+    )
 
     delete_document(
         db=db,
@@ -287,10 +314,13 @@ def remove_document(
         user_id=current_user.id,
         resource_id=document_resource_id,
         details={
-            "filename": original_filename,
+            "filename":
+                original_filename,
         },
     )
 
     return Response(
-        status_code=status.HTTP_204_NO_CONTENT,
+        status_code=(
+            status.HTTP_204_NO_CONTENT
+        ),
     )
