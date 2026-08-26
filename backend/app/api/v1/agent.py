@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.agents.orchestrator import AgentOrchestrator
 from app.api.dependencies import get_current_user
 from app.api.organization_dependencies import (
-    require_organization_member,
+    require_organization_write_access,
 )
 from app.db.database import get_db
 from app.models.organization_member import OrganizationMember
@@ -39,7 +39,7 @@ def run_agent(
     organization_id: uuid.UUID,
     request: AgentRequest,
     _: OrganizationMember = Depends(
-        require_organization_member,
+        require_organization_write_access,
     ),
     current_user: User = Depends(
         get_current_user,
