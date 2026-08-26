@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user
 from app.api.organization_dependencies import (
     get_current_membership,
+    require_organization_write_access,
 )
 from app.db.database import get_db
 from app.models.organization_member import OrganizationMember
@@ -47,7 +48,7 @@ def create_new_conversation(
     organization_id: uuid.UUID,
     request: ConversationCreate,
     _: OrganizationMember = Depends(
-        get_current_membership,
+        require_organization_write_access,
     ),
     current_user: User = Depends(
         get_current_user,
@@ -153,7 +154,7 @@ def remove_conversation(
     organization_id: uuid.UUID,
     conversation_id: uuid.UUID,
     _: OrganizationMember = Depends(
-        get_current_membership,
+        require_organization_write_access,
     ),
     current_user: User = Depends(
         get_current_user,
