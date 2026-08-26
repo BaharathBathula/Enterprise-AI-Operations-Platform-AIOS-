@@ -41,6 +41,26 @@ def require_organization_member(
     return membership
 
 
+def require_organization_write_access(
+    membership: OrganizationMember = Depends(
+        get_current_membership,
+    ),
+) -> OrganizationMember:
+    allowed_roles = {
+        OrganizationRole.owner,
+        OrganizationRole.admin,
+        OrganizationRole.member,
+    }
+
+    if membership.role not in allowed_roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization write access required",
+        )
+
+    return membership
+
+
 def require_organization_admin(
     membership: OrganizationMember = Depends(
         get_current_membership,
@@ -71,9 +91,7 @@ def require_organization_owner(
     if membership.role != OrganizationRole.owner:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=(
-                "Organization owner access required"
-            ),
+            detail="Organization owner access required",
         )
 
     return membership
