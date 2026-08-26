@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.api.organization_dependencies import (
-    get_current_membership,
+    require_organization_write_access,
 )
 from app.db.database import get_db
 from app.models.message import MessageRole
@@ -53,7 +53,7 @@ def ask_organization_documents(
     organization_id: uuid.UUID,
     request: RAGQuestionRequest,
     _: OrganizationMember = Depends(
-        get_current_membership,
+        require_organization_write_access,
     ),
     current_user: User = Depends(
         get_current_user,
