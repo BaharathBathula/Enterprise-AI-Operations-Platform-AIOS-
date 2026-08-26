@@ -19,6 +19,9 @@ from app.api.v1.tool_approvals import (
 )
 from app.api.v1.users import router as users_router
 from app.api.v1.agent import router as agent_router
+from app.api.v1.incidents import (
+    router as incidents_router,
+)
 
 api_router = APIRouter()
 
