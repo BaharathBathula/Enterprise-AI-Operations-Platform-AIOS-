@@ -171,10 +171,6 @@ def approve_tool_approval(
     "/{approval_id}/reject",
     response_model=ToolApprovalResponse,
 )
-@router.post(
-    "/{approval_id}/reject",
-    response_model=ToolApprovalResponse,
-)
 def reject_tool_approval(
     organization_id: uuid.UUID,
     approval_id: uuid.UUID,
