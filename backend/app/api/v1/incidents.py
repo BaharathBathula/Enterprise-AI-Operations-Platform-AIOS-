@@ -14,6 +14,7 @@ from app.api.dependencies import (
     get_current_user,
 )
 from app.api.organization_dependencies import (
+    require_organization_admin,
     require_organization_member,
 )
 from app.db.database import get_db
@@ -94,8 +95,8 @@ def list_incidents(
 def create_incident(
     organization_id: uuid.UUID,
     payload: IncidentCreate,
-    _: OrganizationMember = Depends(
-        require_organization_member,
+        _: OrganizationMember = Depends(
+        require_organization_admin,
     ),
     current_user: User = Depends(
         get_current_user,
@@ -200,8 +201,8 @@ def update_incident(
 def delete_incident(
     organization_id: uuid.UUID,
     incident_id: uuid.UUID,
-    _: OrganizationMember = Depends(
-        require_organization_member,
+        _: OrganizationMember = Depends(
+        require_organization_admin,
     ),
     db: Session = Depends(get_db),
 ) -> None:
