@@ -2,13 +2,16 @@
 
 import {
   Bot,
+  Check,
   FileText,
   Loader2,
   MessageSquarePlus,
+  Play,
   Send,
   ShieldCheck,
   Sparkles,
   User,
+  X,
 } from "lucide-react";
 import {
   FormEvent,
@@ -53,14 +56,81 @@ type RAGResponse = {
 };
 
 
+type ApprovalStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "executed"
+  | string;
+
+
+type ToolApproval = {
+  id: string;
+  organization_id: string;
+  requested_by_user_id: string;
+  conversation_id: string | null;
+
+  tool_name: string;
+  arguments: Record<
+    string,
+    unknown
+  >;
+
+  status: ApprovalStatus;
+
+  reviewed_by_user_id:
+    | string
+    | null;
+
+  review_note:
+    | string
+    | null;
+
+  created_at: string;
+  reviewed_at:
+    | string
+    | null;
+
+  executed_at:
+    | string
+    | null;
+};
+
+
+type ToolExecutionResponse = {
+  success: boolean;
+  message: string | null;
+  error: string | null;
+  data: Record<
+    string,
+    unknown
+  >;
+};
+
+
+type ApprovalState = {
+  id: string;
+  toolName?: string;
+  status: ApprovalStatus;
+  busyAction:
+    | "approve"
+    | "reject"
+    | "execute"
+    | null;
+  resultMessage?: string;
+  errorMessage?: string;
+};
+
+
 type ChatMessage = {
   id: string;
-  role: "user" | "assistant";
+  role:
+    | "user"
+    | "assistant";
   content: string;
   mode?: CopilotMode;
   sources?: Source[];
-  approvalId?: string;
-  toolName?: string;
+  approval?: ApprovalState;
   isError?: boolean;
 };
 
@@ -76,7 +146,7 @@ const welcomeMessage: ChatMessage = {
   id: "welcome",
   role: "assistant",
   content:
-    "I am AIOS Copilot. Use Knowledge mode to ask questions grounded in processed enterprise documents, or Agent mode to request governed operational actions.",
+    "I am AIOS Copilot. Use Knowledge mode for grounded enterprise-document answers, or Agent Actions for governed operational requests.",
 };
 
 
@@ -88,7 +158,10 @@ export function CopilotClient() {
       null,
     );
 
-  const [session, setSession] =
+  const [
+    session,
+    setSession,
+  ] =
     useState<SessionData | null>(
       null,
     );
@@ -106,9 +179,9 @@ export function CopilotClient() {
   const [
     conversationId,
     setConversationId,
-  ] = useState<string | null>(
-    null,
-  );
+  ] = useState<
+    string | null
+  >(null);
 
   const [input, setInput] =
     useState("");
@@ -116,10 +189,12 @@ export function CopilotClient() {
   const [loading, setLoading] =
     useState(false);
 
-  const [messages, setMessages] =
-    useState<ChatMessage[]>([
-      welcomeMessage,
-    ]);
+  const [
+    messages,
+    setMessages,
+  ] = useState<
+    ChatMessage[]
+  >([welcomeMessage]);
 
 
   useEffect(() => {
@@ -127,20 +202,30 @@ export function CopilotClient() {
       getSession();
 
     if (!currentSession) {
-      router.replace("/login");
+      router.replace(
+        "/login",
+      );
       return;
     }
 
-    setSession(currentSession);
+    setSession(
+      currentSession,
+    );
+
     setSessionReady(true);
   }, [router]);
 
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({
-      behavior: "smooth",
-    });
-  }, [messages, loading]);
+    bottomRef.current?.scrollIntoView(
+      {
+        behavior: "smooth",
+      },
+    );
+  }, [
+    messages,
+    loading,
+  ]);
 
 
   function startNewConversation() {
@@ -149,15 +234,18 @@ export function CopilotClient() {
     }
 
     setConversationId(null);
+
     setMessages([
       welcomeMessage,
     ]);
+
     setInput("");
   }
 
 
   async function handleSubmit(
-    event: FormEvent<HTMLFormElement>,
+    event:
+      FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
 
@@ -177,23 +265,29 @@ export function CopilotClient() {
       return;
     }
 
-    const userMessage: ChatMessage = {
+    const userMessage:
+      ChatMessage = {
       id: createMessageId(),
       role: "user",
       content: message,
       mode,
     };
 
-    setMessages((current) => [
-      ...current,
-      userMessage,
-    ]);
+    setMessages(
+      (current) => [
+        ...current,
+        userMessage,
+      ],
+    );
 
     setInput("");
     setLoading(true);
 
     try {
-      if (mode === "knowledge") {
+      if (
+        mode ===
+        "knowledge"
+      ) {
         await sendKnowledgeMessage(
           message,
           session,
@@ -205,7 +299,9 @@ export function CopilotClient() {
         );
       }
     } catch (error) {
-      handleRequestError(error);
+      handleRequestError(
+        error,
+      );
     } finally {
       setLoading(false);
     }
@@ -214,21 +310,26 @@ export function CopilotClient() {
 
   async function sendKnowledgeMessage(
     message: string,
-    activeSession: SessionData,
+    activeSession:
+      SessionData,
   ) {
     const response =
-      await apiRequest<RAGResponse>(
+      await apiRequest<
+        RAGResponse
+      >(
         `/organizations/${activeSession.organizationId}/chat`,
         {
           method: "POST",
           token:
             activeSession.accessToken,
-          body: JSON.stringify({
-            question: message,
-            conversation_id:
-              conversationId,
-            top_k: 5,
-          }),
+          body:
+            JSON.stringify({
+              question:
+                message,
+              conversation_id:
+                conversationId,
+              top_k: 5,
+            }),
         },
       );
 
@@ -236,48 +337,59 @@ export function CopilotClient() {
       response.conversation_id,
     );
 
-    setMessages((current) => [
-      ...current,
-      {
-        id: createMessageId(),
-        role: "assistant",
-        mode: "knowledge",
-        content:
-          response.answer,
-        sources:
-          response.sources,
-      },
-    ]);
+    setMessages(
+      (current) => [
+        ...current,
+        {
+          id:
+            createMessageId(),
+          role:
+            "assistant",
+          mode:
+            "knowledge",
+          content:
+            response.answer,
+          sources:
+            response.sources,
+        },
+      ],
+    );
   }
 
 
   async function sendAgentMessage(
     message: string,
-    activeSession: SessionData,
+    activeSession:
+      SessionData,
   ) {
     const response =
-      await apiRequest<AgentResponse>(
+      await apiRequest<
+        AgentResponse
+      >(
         `/organizations/${activeSession.organizationId}/agent`,
         {
           method: "POST",
           token:
             activeSession.accessToken,
-          body: JSON.stringify({
-            message,
-          }),
+          body:
+            JSON.stringify({
+              message,
+            }),
         },
       );
 
     const approvalId =
       typeof response.data
-        .approval_id === "string"
+        .approval_id ===
+      "string"
         ? response.data
             .approval_id
         : undefined;
 
     const toolName =
       typeof response.data
-        .tool_name === "string"
+        .tool_name ===
+      "string"
         ? response.data
             .tool_name
         : undefined;
@@ -286,13 +398,25 @@ export function CopilotClient() {
       response.message ??
       "AIOS completed the request.";
 
+    let approval:
+      | ApprovalState
+      | undefined;
+
     if (
       response.error ===
-      "approval_required"
+        "approval_required" &&
+      approvalId
     ) {
       content =
         response.message ??
         "This action requires human approval.";
+
+      approval = {
+        id: approvalId,
+        toolName,
+        status: "pending",
+        busyAction: null,
+      };
     } else if (
       !response.success
     ) {
@@ -301,33 +425,282 @@ export function CopilotClient() {
         "AIOS could not complete the request.";
     } else if (
       typeof response.data
-        .answer === "string"
+        .answer ===
+      "string"
     ) {
       content =
-        response.data.answer;
+        response.data
+          .answer;
     } else if (
       typeof response.data
-        .message === "string"
+        .message ===
+      "string"
     ) {
       content =
-        response.data.message;
+        response.data
+          .message;
     }
 
-    setMessages((current) => [
-      ...current,
-      {
-        id: createMessageId(),
-        role: "assistant",
-        mode: "agent",
-        content,
-        approvalId,
-        toolName,
-        isError:
-          !response.success &&
-          response.error !==
-            "approval_required",
-      },
-    ]);
+    setMessages(
+      (current) => [
+        ...current,
+        {
+          id:
+            createMessageId(),
+          role:
+            "assistant",
+          mode: "agent",
+          content,
+          approval,
+          isError:
+            !response.success &&
+            response.error !==
+              "approval_required",
+        },
+      ],
+    );
+  }
+
+
+  function updateApproval(
+    messageId: string,
+    updater: (
+      approval:
+        ApprovalState,
+    ) => ApprovalState,
+  ) {
+    setMessages(
+      (current) =>
+        current.map(
+          (message) => {
+            if (
+              message.id !==
+                messageId ||
+              !message.approval
+            ) {
+              return message;
+            }
+
+            return {
+              ...message,
+              approval:
+                updater(
+                  message.approval,
+                ),
+            };
+          },
+        ),
+    );
+  }
+
+
+  async function approveRequest(
+    messageId: string,
+    approvalId: string,
+  ) {
+    if (!session) {
+      return;
+    }
+
+    updateApproval(
+      messageId,
+      (approval) => ({
+        ...approval,
+        busyAction:
+          "approve",
+        errorMessage:
+          undefined,
+        resultMessage:
+          undefined,
+      }),
+    );
+
+    try {
+      const response =
+        await apiRequest<
+          ToolApproval
+        >(
+          `/organizations/${session.organizationId}/tool-approvals/${approvalId}/approve`,
+          {
+            method: "POST",
+            token:
+              session.accessToken,
+            body:
+              JSON.stringify({
+                review_note:
+                  "Approved from AIOS Copilot",
+              }),
+          },
+        );
+
+      updateApproval(
+        messageId,
+        (approval) => ({
+          ...approval,
+          status:
+            response.status,
+          busyAction: null,
+          resultMessage:
+            "Approval granted. The action is now eligible for execution.",
+        }),
+      );
+    } catch (error) {
+      updateApproval(
+        messageId,
+        (approval) => ({
+          ...approval,
+          busyAction: null,
+          errorMessage:
+            approvalErrorMessage(
+              error,
+            ),
+        }),
+      );
+    }
+  }
+
+
+  async function rejectRequest(
+    messageId: string,
+    approvalId: string,
+  ) {
+    if (!session) {
+      return;
+    }
+
+    updateApproval(
+      messageId,
+      (approval) => ({
+        ...approval,
+        busyAction:
+          "reject",
+        errorMessage:
+          undefined,
+        resultMessage:
+          undefined,
+      }),
+    );
+
+    try {
+      const response =
+        await apiRequest<
+          ToolApproval
+        >(
+          `/organizations/${session.organizationId}/tool-approvals/${approvalId}/reject`,
+          {
+            method: "POST",
+            token:
+              session.accessToken,
+            body:
+              JSON.stringify({
+                review_note:
+                  "Rejected from AIOS Copilot",
+              }),
+          },
+        );
+
+      updateApproval(
+        messageId,
+        (approval) => ({
+          ...approval,
+          status:
+            response.status,
+          busyAction: null,
+          resultMessage:
+            "The governed action was rejected.",
+        }),
+      );
+    } catch (error) {
+      updateApproval(
+        messageId,
+        (approval) => ({
+          ...approval,
+          busyAction: null,
+          errorMessage:
+            approvalErrorMessage(
+              error,
+            ),
+        }),
+      );
+    }
+  }
+
+
+  async function executeRequest(
+    messageId: string,
+    approvalId: string,
+  ) {
+    if (!session) {
+      return;
+    }
+
+    updateApproval(
+      messageId,
+      (approval) => ({
+        ...approval,
+        busyAction:
+          "execute",
+        errorMessage:
+          undefined,
+        resultMessage:
+          undefined,
+      }),
+    );
+
+    try {
+      const response =
+        await apiRequest<
+          ToolExecutionResponse
+        >(
+          `/organizations/${session.organizationId}/tool-approvals/${approvalId}/execute`,
+          {
+            method: "POST",
+            token:
+              session.accessToken,
+          },
+        );
+
+      updateApproval(
+        messageId,
+        (approval) => ({
+          ...approval,
+          status:
+            "executed",
+          busyAction: null,
+          resultMessage:
+            response.message ??
+            "The approved action executed successfully.",
+        }),
+      );
+
+      setMessages(
+        (current) => [
+          ...current,
+          {
+            id:
+              createMessageId(),
+            role:
+              "assistant",
+            mode: "agent",
+            content:
+              response.message ??
+              "The approved governed action executed successfully.",
+          },
+        ],
+      );
+    } catch (error) {
+      updateApproval(
+        messageId,
+        (approval) => ({
+          ...approval,
+          busyAction: null,
+          errorMessage:
+            approvalErrorMessage(
+              error,
+            ),
+        }),
+      );
+    }
   }
 
 
@@ -335,11 +708,16 @@ export function CopilotClient() {
     error: unknown,
   ) {
     if (
-      error instanceof ApiError &&
+      error instanceof
+        ApiError &&
       error.status === 401
     ) {
       clearSession();
-      router.replace("/login");
+
+      router.replace(
+        "/login",
+      );
+
       return;
     }
 
@@ -347,21 +725,27 @@ export function CopilotClient() {
       "Unable to reach the AIOS backend.";
 
     if (
-      error instanceof ApiError
+      error instanceof
+      ApiError
     ) {
       errorMessage =
         `Request failed (${error.status}): ${error.detail}`;
     }
 
-    setMessages((current) => [
-      ...current,
-      {
-        id: createMessageId(),
-        role: "assistant",
-        content: errorMessage,
-        isError: true,
-      },
-    ]);
+    setMessages(
+      (current) => [
+        ...current,
+        {
+          id:
+            createMessageId(),
+          role:
+            "assistant",
+          content:
+            errorMessage,
+          isError: true,
+        },
+      ],
+    );
   }
 
 
@@ -370,7 +754,8 @@ export function CopilotClient() {
       KeyboardEvent<HTMLTextAreaElement>,
   ) {
     if (
-      event.key === "Enter" &&
+      event.key ===
+        "Enter" &&
       !event.shiftKey
     ) {
       event.preventDefault();
@@ -393,13 +778,15 @@ export function CopilotClient() {
           minHeight:
             "calc(100vh - 132px)",
           display: "grid",
-          placeItems: "center",
+          placeItems:
+            "center",
         }}
       >
         <div
           style={{
             display: "flex",
-            alignItems: "center",
+            alignItems:
+              "center",
             gap: 8,
             color: "#667085",
             fontSize: 12,
@@ -407,10 +794,10 @@ export function CopilotClient() {
         >
           <Loader2
             size={16}
-            className="spin"
           />
 
-          Loading AIOS session...
+          Loading AIOS
+          session...
         </div>
       </section>
     );
@@ -422,7 +809,8 @@ export function CopilotClient() {
       className="card"
       style={{
         display: "flex",
-        flexDirection: "column",
+        flexDirection:
+          "column",
         minHeight:
           "calc(100vh - 132px)",
         maxHeight:
@@ -432,11 +820,13 @@ export function CopilotClient() {
     >
       <div
         style={{
-          padding: "18px 20px",
+          padding:
+            "18px 20px",
           borderBottom:
             "1px solid #e4e7ec",
           display: "flex",
-          alignItems: "center",
+          alignItems:
+            "center",
           justifyContent:
             "space-between",
           gap: 16,
@@ -446,7 +836,8 @@ export function CopilotClient() {
           <div
             style={{
               display: "flex",
-              alignItems: "center",
+              alignItems:
+                "center",
               gap: 9,
             }}
           >
@@ -455,7 +846,8 @@ export function CopilotClient() {
             <div
               style={{
                 fontSize: 18,
-                fontWeight: 700,
+                fontWeight:
+                  700,
               }}
             >
               AIOS Copilot
@@ -465,11 +857,13 @@ export function CopilotClient() {
           <div
             style={{
               marginTop: 5,
-              color: "#98a2b3",
+              color:
+                "#98a2b3",
               fontSize: 12,
             }}
           >
-            Enterprise knowledge and
+            Enterprise
+            knowledge and
             governed operational
             actions
           </div>
@@ -479,22 +873,28 @@ export function CopilotClient() {
         <div
           style={{
             display: "flex",
-            alignItems: "center",
+            alignItems:
+              "center",
             gap: 9,
           }}
         >
           <div
             style={{
               display: "flex",
-              alignItems: "center",
+              alignItems:
+                "center",
               gap: 6,
-              padding: "7px 10px",
-              borderRadius: 999,
+              padding:
+                "7px 10px",
+              borderRadius:
+                999,
               background:
                 "#ecfdf3",
-              color: "#067647",
+              color:
+                "#067647",
               fontSize: 11,
-              fontWeight: 700,
+              fontWeight:
+                700,
             }}
           >
             <ShieldCheck
@@ -526,40 +926,52 @@ export function CopilotClient() {
 
       <div
         style={{
-          padding: "12px 18px",
+          padding:
+            "12px 18px",
           borderBottom:
             "1px solid #e4e7ec",
-          background: "#ffffff",
+          background:
+            "#ffffff",
         }}
       >
         <div
           style={{
-            display: "inline-flex",
+            display:
+              "inline-flex",
             padding: 4,
             borderRadius: 10,
-            background: "#f2f4f7",
+            background:
+              "#f2f4f7",
             gap: 4,
           }}
         >
           <ModeButton
             active={
-              mode === "knowledge"
+              mode ===
+              "knowledge"
             }
             onClick={() =>
-              setMode("knowledge")
+              setMode(
+                "knowledge",
+              )
             }
             icon={
-              <FileText size={14} />
+              <FileText
+                size={14}
+              />
             }
             label="Knowledge"
           />
 
           <ModeButton
             active={
-              mode === "agent"
+              mode ===
+              "agent"
             }
             onClick={() =>
-              setMode("agent")
+              setMode(
+                "agent",
+              )
             }
             icon={
               <ShieldCheck
@@ -578,9 +990,10 @@ export function CopilotClient() {
             fontSize: 10,
           }}
         >
-          {mode === "knowledge"
+          {mode ===
+          "knowledge"
             ? "Knowledge mode uses processed workspace documents and persists the RAG conversation."
-            : "Agent mode invokes governed AIOS tools. Write actions may require human approval."}
+            : "Agent mode invokes governed AIOS tools. Write actions can require approval before execution."}
         </div>
       </div>
 
@@ -590,17 +1003,48 @@ export function CopilotClient() {
           flex: 1,
           padding: 22,
           display: "flex",
-          flexDirection: "column",
+          flexDirection:
+            "column",
           gap: 18,
-          background: "#fbfcfe",
-          overflowY: "auto",
+          background:
+            "#fbfcfe",
+          overflowY:
+            "auto",
         }}
       >
         {messages.map(
           (message) => (
             <MessageBubble
-              key={message.id}
-              message={message}
+              key={
+                message.id
+              }
+              message={
+                message
+              }
+              onApprove={(
+                approvalId,
+              ) =>
+                void approveRequest(
+                  message.id,
+                  approvalId,
+                )
+              }
+              onReject={(
+                approvalId,
+              ) =>
+                void rejectRequest(
+                  message.id,
+                  approvalId,
+                )
+              }
+              onExecute={(
+                approvalId,
+              ) =>
+                void executeRequest(
+                  message.id,
+                  approvalId,
+                )
+              }
             />
           ),
         )}
@@ -610,41 +1054,49 @@ export function CopilotClient() {
           <div
             style={{
               display: "flex",
-              alignItems: "center",
+              alignItems:
+                "center",
               gap: 9,
-              color: "#667085",
+              color:
+                "#667085",
               fontSize: 12,
             }}
           >
             <Loader2
               size={16}
-              className="spin"
             />
 
-            {mode === "knowledge"
+            {mode ===
+            "knowledge"
               ? "Searching enterprise knowledge..."
-              : "AIOS is evaluating the action..."}
+              : "AIOS is evaluating the governed action..."}
           </div>
         )}
 
 
-        <div ref={bottomRef} />
+        <div
+          ref={bottomRef}
+        />
       </div>
 
 
       <form
-        onSubmit={handleSubmit}
+        onSubmit={
+          handleSubmit
+        }
         style={{
           borderTop:
             "1px solid #e4e7ec",
           padding: 16,
-          background: "#ffffff",
+          background:
+            "#ffffff",
         }}
       >
         <div
           style={{
             display: "flex",
-            alignItems: "flex-end",
+            alignItems:
+              "flex-end",
             gap: 10,
             border:
               "1px solid #d0d5dd",
@@ -654,16 +1106,20 @@ export function CopilotClient() {
         >
           <textarea
             value={input}
-            onChange={(event) =>
+            onChange={(
+              event,
+            ) =>
               setInput(
-                event.target.value,
+                event.target
+                  .value,
               )
             }
             onKeyDown={
               handleKeyDown
             }
             placeholder={
-              mode === "knowledge"
+              mode ===
+              "knowledge"
                 ? "Ask a question about your enterprise documents..."
                 : "Request a governed operational action..."
             }
@@ -685,7 +1141,8 @@ export function CopilotClient() {
             type="submit"
             disabled={
               loading ||
-              input.trim()
+              input
+                .trim()
                 .length === 0
             }
             aria-label="Send message"
@@ -693,20 +1150,26 @@ export function CopilotClient() {
               width: 40,
               height: 40,
               flexShrink: 0,
-              borderRadius: 10,
+              borderRadius:
+                10,
               border: "none",
-              background: "#111827",
-              color: "#ffffff",
+              background:
+                "#111827",
+              color:
+                "#ffffff",
               display: "grid",
-              placeItems: "center",
+              placeItems:
+                "center",
               cursor:
                 loading
                   ? "not-allowed"
                   : "pointer",
               opacity:
                 loading ||
-                input.trim()
-                  .length === 0
+                input
+                  .trim()
+                  .length ===
+                  0
                   ? 0.45
                   : 1,
             }}
@@ -714,10 +1177,11 @@ export function CopilotClient() {
             {loading ? (
               <Loader2
                 size={16}
-                className="spin"
               />
             ) : (
-              <Send size={16} />
+              <Send
+                size={16}
+              />
             )}
           </button>
         </div>
@@ -734,11 +1198,13 @@ export function CopilotClient() {
         >
           <span>
             Enter to send •
-            Shift+Enter for new line
+            Shift+Enter for new
+            line
           </span>
 
           {conversationId &&
-            mode === "knowledge" && (
+            mode ===
+              "knowledge" && (
               <span>
                 Conversation{" "}
                 {conversationId.slice(
@@ -772,7 +1238,8 @@ function ModeButton({
       style={{
         border: "none",
         borderRadius: 8,
-        padding: "7px 10px",
+        padding:
+          "7px 10px",
         background: active
           ? "#ffffff"
           : "transparent",
@@ -780,7 +1247,8 @@ function ModeButton({
           ? "#344054"
           : "#667085",
         display: "flex",
-        alignItems: "center",
+        alignItems:
+          "center",
         gap: 6,
         fontSize: 11,
         fontWeight: 600,
@@ -799,27 +1267,45 @@ function ModeButton({
 
 function MessageBubble({
   message,
+  onApprove,
+  onReject,
+  onExecute,
 }: {
   message: ChatMessage;
+
+  onApprove: (
+    approvalId: string,
+  ) => void;
+
+  onReject: (
+    approvalId: string,
+  ) => void;
+
+  onExecute: (
+    approvalId: string,
+  ) => void;
 }) {
   const isUser =
-    message.role === "user";
+    message.role ===
+    "user";
 
   return (
     <div
       style={{
         display: "flex",
-        justifyContent: isUser
-          ? "flex-end"
-          : "flex-start",
+        justifyContent:
+          isUser
+            ? "flex-end"
+            : "flex-start",
       }}
     >
       <div
         style={{
           display: "flex",
-          flexDirection: isUser
-            ? "row-reverse"
-            : "row",
+          flexDirection:
+            isUser
+              ? "row-reverse"
+              : "row",
           gap: 10,
           maxWidth: "82%",
         }}
@@ -830,14 +1316,16 @@ function MessageBubble({
             height: 32,
             flexShrink: 0,
             borderRadius: 9,
-            background: isUser
-              ? "#eef2f6"
-              : "#111827",
+            background:
+              isUser
+                ? "#eef2f6"
+                : "#111827",
             color: isUser
               ? "#475467"
               : "#ffffff",
             display: "grid",
-            placeItems: "center",
+            placeItems:
+              "center",
           }}
         >
           {isUser ? (
@@ -855,26 +1343,32 @@ function MessageBubble({
         >
           <div
             style={{
-              borderRadius: 14,
-              padding: "13px 15px",
-              background: isUser
-                ? "#111827"
-                : message.isError
-                  ? "#fef3f2"
-                  : "#ffffff",
-              color: isUser
-                ? "#ffffff"
-                : message.isError
-                  ? "#b42318"
-                  : "#111827",
-              border: isUser
-                ? "none"
-                : message.isError
-                  ? "1px solid #fecdca"
-                  : "1px solid #e4e7ec",
+              borderRadius:
+                14,
+              padding:
+                "13px 15px",
+              background:
+                isUser
+                  ? "#111827"
+                  : message.isError
+                    ? "#fef3f2"
+                    : "#ffffff",
+              color:
+                isUser
+                  ? "#ffffff"
+                  : message.isError
+                    ? "#b42318"
+                    : "#111827",
+              border:
+                isUser
+                  ? "none"
+                  : message.isError
+                    ? "1px solid #fecdca"
+                    : "1px solid #e4e7ec",
               fontSize: 13,
               lineHeight: 1.65,
-              whiteSpace: "pre-wrap",
+              whiteSpace:
+                "pre-wrap",
             }}
           >
             {message.content}
@@ -882,8 +1376,8 @@ function MessageBubble({
 
 
           {message.sources &&
-            message.sources.length >
-              0 && (
+            message.sources
+              .length > 0 && (
               <Sources
                 sources={
                   message.sources
@@ -892,13 +1386,28 @@ function MessageBubble({
             )}
 
 
-          {message.approvalId && (
+          {message.approval && (
             <ApprovalCard
-              approvalId={
-                message.approvalId
+              approval={
+                message.approval
               }
-              toolName={
-                message.toolName
+              onApprove={() =>
+                onApprove(
+                  message
+                    .approval!.id,
+                )
+              }
+              onReject={() =>
+                onReject(
+                  message
+                    .approval!.id,
+                )
+              }
+              onExecute={() =>
+                onExecute(
+                  message
+                    .approval!.id,
+                )
               }
             />
           )}
@@ -912,8 +1421,6 @@ function MessageBubble({
                   color:
                     "#98a2b3",
                   fontSize: 9,
-                  textTransform:
-                    "capitalize",
                 }}
               >
                 {message.mode ===
@@ -925,6 +1432,304 @@ function MessageBubble({
         </div>
       </div>
     </div>
+  );
+}
+
+
+function ApprovalCard({
+  approval,
+  onApprove,
+  onReject,
+  onExecute,
+}: {
+  approval: ApprovalState;
+  onApprove: () => void;
+  onReject: () => void;
+  onExecute: () => void;
+}) {
+  const pending =
+    approval.status ===
+    "pending";
+
+  const approved =
+    approval.status ===
+    "approved";
+
+  const rejected =
+    approval.status ===
+    "rejected";
+
+  const executed =
+    approval.status ===
+    "executed";
+
+  const busy =
+    approval.busyAction !==
+    null;
+
+  return (
+    <div
+      style={{
+        marginTop: 8,
+        padding: 13,
+        borderRadius: 10,
+        background:
+          rejected
+            ? "#fef3f2"
+            : executed
+              ? "#ecfdf3"
+              : approved
+                ? "#eff8ff"
+                : "#fffaeb",
+        border:
+          rejected
+            ? "1px solid #fecdca"
+            : executed
+              ? "1px solid #abefc6"
+              : approved
+                ? "1px solid #b2ddff"
+                : "1px solid #fedf89",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent:
+            "space-between",
+          alignItems:
+            "center",
+          gap: 12,
+        }}
+      >
+        <div>
+          <div
+            style={{
+              display: "flex",
+              alignItems:
+                "center",
+              gap: 6,
+              fontSize: 11,
+              fontWeight: 700,
+            }}
+          >
+            <ShieldCheck
+              size={13}
+            />
+
+            Governed Action
+          </div>
+
+          <div
+            style={{
+              marginTop: 5,
+              color:
+                "#667085",
+              fontSize: 10,
+            }}
+          >
+            Tool:{" "}
+            {approval.toolName ??
+              "governed action"}
+          </div>
+        </div>
+
+        <StatusBadge
+          status={
+            approval.status
+          }
+        />
+      </div>
+
+
+      <div
+        style={{
+          marginTop: 7,
+          color: "#98a2b3",
+          fontSize: 9,
+        }}
+      >
+        Approval ID:{" "}
+        {approval.id}
+      </div>
+
+
+      {approval.resultMessage && (
+        <div
+          style={{
+            marginTop: 9,
+            color:
+              executed
+                ? "#067647"
+                : rejected
+                  ? "#b42318"
+                  : "#175cd3",
+            fontSize: 10,
+            lineHeight: 1.5,
+          }}
+        >
+          {
+            approval.resultMessage
+          }
+        </div>
+      )}
+
+
+      {approval.errorMessage && (
+        <div
+          style={{
+            marginTop: 9,
+            padding: 9,
+            borderRadius: 7,
+            background:
+              "#ffffff",
+            color:
+              "#b42318",
+            fontSize: 10,
+            lineHeight: 1.5,
+          }}
+        >
+          {
+            approval.errorMessage
+          }
+        </div>
+      )}
+
+
+      {pending && (
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            marginTop: 12,
+          }}
+        >
+          <button
+            type="button"
+            onClick={
+              onApprove
+            }
+            disabled={busy}
+            style={{
+              ...actionButtonStyle,
+              background:
+                "#067647",
+              color:
+                "#ffffff",
+              border:
+                "1px solid #067647",
+            }}
+          >
+            {approval.busyAction ===
+            "approve" ? (
+              <Loader2
+                size={13}
+              />
+            ) : (
+              <Check
+                size={13}
+              />
+            )}
+
+            Approve
+          </button>
+
+          <button
+            type="button"
+            onClick={
+              onReject
+            }
+            disabled={busy}
+            style={{
+              ...actionButtonStyle,
+              background:
+                "#ffffff",
+              color:
+                "#b42318",
+              border:
+                "1px solid #fda29b",
+            }}
+          >
+            {approval.busyAction ===
+            "reject" ? (
+              <Loader2
+                size={13}
+              />
+            ) : (
+              <X size={13} />
+            )}
+
+            Reject
+          </button>
+        </div>
+      )}
+
+
+      {approved && (
+        <div
+          style={{
+            marginTop: 12,
+          }}
+        >
+          <button
+            type="button"
+            onClick={
+              onExecute
+            }
+            disabled={busy}
+            style={{
+              ...actionButtonStyle,
+              background:
+                "#175cd3",
+              color:
+                "#ffffff",
+              border:
+                "1px solid #175cd3",
+            }}
+          >
+            {approval.busyAction ===
+            "execute" ? (
+              <Loader2
+                size={13}
+              />
+            ) : (
+              <Play
+                size={13}
+              />
+            )}
+
+            Execute approved
+            action
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+function StatusBadge({
+  status,
+}: {
+  status: string;
+}) {
+  return (
+    <span
+      style={{
+        borderRadius: 999,
+        padding: "4px 7px",
+        background:
+          "#ffffff",
+        color: "#475467",
+        border:
+          "1px solid #e4e7ec",
+        fontSize: 9,
+        fontWeight: 700,
+        textTransform:
+          "uppercase",
+      }}
+    >
+      {status}
+    </span>
   );
 }
 
@@ -941,37 +1746,47 @@ function Sources({
         border:
           "1px solid #e4e7ec",
         borderRadius: 10,
-        background: "#ffffff",
+        background:
+          "#ffffff",
         overflow: "hidden",
       }}
     >
       <div
         style={{
-          padding: "8px 10px",
+          padding:
+            "8px 10px",
           borderBottom:
             "1px solid #f0f1f3",
           display: "flex",
-          alignItems: "center",
+          alignItems:
+            "center",
           gap: 6,
           color: "#475467",
           fontSize: 10,
           fontWeight: 700,
         }}
       >
-        <FileText size={12} />
+        <FileText
+          size={12}
+        />
 
         Sources
       </div>
 
       {sources.map(
-        (source, index) => (
+        (
+          source,
+          index,
+        ) => (
           <div
             key={`${source.document_id}-${source.page_number}-${index}`}
             style={{
-              padding: "9px 10px",
+              padding:
+                "9px 10px",
               borderBottom:
                 index ===
-                sources.length - 1
+                sources.length -
+                  1
                   ? "none"
                   : "1px solid #f0f1f3",
               display: "flex",
@@ -991,7 +1806,8 @@ function Sources({
                   source.filename
                 }
                 style={{
-                  fontWeight: 600,
+                  fontWeight:
+                    600,
                   overflow:
                     "hidden",
                   textOverflow:
@@ -1000,7 +1816,9 @@ function Sources({
                     "nowrap",
                 }}
               >
-                {source.filename}
+                {
+                  source.filename
+                }
               </div>
 
               <div
@@ -1019,7 +1837,8 @@ function Sources({
 
             <div
               style={{
-                color: "#667085",
+                color:
+                  "#667085",
                 whiteSpace:
                   "nowrap",
               }}
@@ -1036,63 +1855,33 @@ function Sources({
 }
 
 
-function ApprovalCard({
-  approvalId,
-  toolName,
-}: {
-  approvalId: string;
-  toolName?: string;
-}) {
-  return (
-    <div
-      style={{
-        marginTop: 8,
-        padding: 12,
-        borderRadius: 10,
-        background: "#fffaeb",
-        border:
-          "1px solid #fedf89",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          color: "#b54708",
-          fontSize: 11,
-          fontWeight: 700,
-        }}
-      >
-        <Sparkles size={13} />
+function approvalErrorMessage(
+  error: unknown,
+): string {
+  if (
+    error instanceof
+    ApiError
+  ) {
+    if (
+      error.status === 403
+    ) {
+      return (
+        "This approval cannot be completed by the current user. " +
+        "AIOS prevents users from approving their own governed tool requests. " +
+        "Use a different organization administrator to review it."
+      );
+    }
 
-        Human approval required
-      </div>
+    if (
+      error.status === 409
+    ) {
+      return error.detail;
+    }
 
-      <div
-        style={{
-          marginTop: 6,
-          color: "#667085",
-          fontSize: 10,
-        }}
-      >
-        Tool:{" "}
-        {toolName ??
-          "governed action"}
-      </div>
+    return `Request failed (${error.status}): ${error.detail}`;
+  }
 
-      <div
-        style={{
-          marginTop: 3,
-          color: "#98a2b3",
-          fontSize: 9,
-        }}
-      >
-        Approval ID:{" "}
-        {approvalId}
-      </div>
-    </div>
-  );
+  return "Unable to update the approval request.";
 }
 
 
@@ -1100,7 +1889,9 @@ function formatScore(
   score: number,
 ): string {
   if (
-    !Number.isFinite(score)
+    !Number.isFinite(
+      score,
+    )
   ) {
     return "—";
   }
@@ -1109,6 +1900,19 @@ function formatScore(
     score * 100
   ).toFixed(1)}%`;
 }
+
+
+const actionButtonStyle:
+  React.CSSProperties = {
+    borderRadius: 8,
+    padding: "7px 9px",
+    display: "flex",
+    alignItems: "center",
+    gap: 5,
+    fontSize: 10,
+    fontWeight: 700,
+    cursor: "pointer",
+  };
 
 
 const secondaryButtonStyle:
