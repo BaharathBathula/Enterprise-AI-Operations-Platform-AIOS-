@@ -189,19 +189,23 @@ def reject_tool_approval(
         approval_id=approval_id,
     )
 
-    if approval is None:
+        if approval is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Tool approval request not found",
         )
 
+    if approval.requested_by_user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Users cannot reject their own "
+                "tool requests"
+            ),
+        )
+
     try:
         approval = reject_tool_request(
-            db=db,
-            approval=approval,
-            reviewed_by_user_id=current_user.id,
-            review_note=request.review_note,
-        )
 
     except ToolApprovalStateError as exc:
         raise HTTPException(
