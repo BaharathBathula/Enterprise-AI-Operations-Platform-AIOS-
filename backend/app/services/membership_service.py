@@ -218,34 +218,28 @@ def transfer_organization_ownership(
 
     owner_statement = (
         select(OrganizationMember)
-        .options(
-            joinedload(
-                OrganizationMember.user
-            ),
-        )
         .where(
             OrganizationMember.id
             == current_owner_member_id,
             OrganizationMember.organization_id
             == organization_id,
         )
-        .with_for_update()
+        .with_for_update(
+            of=OrganizationMember
+        )
     )
 
     target_statement = (
         select(OrganizationMember)
-        .options(
-            joinedload(
-                OrganizationMember.user
-            ),
-        )
         .where(
             OrganizationMember.id
             == target_member_id,
             OrganizationMember.organization_id
             == organization_id,
         )
-        .with_for_update()
+        .with_for_update(
+            of=OrganizationMember
+        )
     )
 
     current_owner = db.scalar(
@@ -295,9 +289,7 @@ def transfer_organization_ownership(
     )
 
     try:
-        db.add(current_owner)
-        db.add(target_member)
-
+        db.flush()
         db.commit()
 
     except Exception:
