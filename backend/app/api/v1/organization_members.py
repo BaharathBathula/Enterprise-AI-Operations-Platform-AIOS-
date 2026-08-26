@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.api.organization_dependencies import (
     get_current_membership,
     require_organization_admin,
+    require_organization_owner,
 )
 from app.db.database import get_db
 from app.models.organization_member import (
@@ -22,14 +23,20 @@ from app.schemas.organization import (
     OrganizationMemberResponse,
     OrganizationMemberRoleUpdate,
 )
+from app.services.audit_service import (
+    log_audit_event,
+)
 from app.services.membership_service import (
     MemberAlreadyExistsError,
+    MemberNotFoundError,
     OwnerModificationError,
+    OwnershipTransferError,
     UserNotFoundError,
     add_organization_member,
     get_organization_member,
     list_organization_members,
     remove_organization_member,
+    transfer_organization_ownership,
     update_member_role,
 )
 
@@ -217,6 +224,87 @@ def change_member_role(
 
     return serialize_membership(
         membership
+    )
+
+
+@router.post(
+    "/{member_id}/transfer-ownership",
+    response_model=(
+        OrganizationMemberResponse
+    ),
+)
+def transfer_ownership(
+    organization_id: uuid.UUID,
+    member_id: uuid.UUID,
+    current_owner: OrganizationMember = Depends(
+        require_organization_owner,
+    ),
+    db: Session = Depends(get_db),
+) -> OrganizationMemberResponse:
+    try:
+        (
+            previous_owner,
+            new_owner,
+        ) = transfer_organization_ownership(
+            db=db,
+            organization_id=organization_id,
+            current_owner_member_id=(
+                current_owner.id
+            ),
+            target_member_id=member_id,
+        )
+
+    except MemberNotFoundError as exc:
+        raise HTTPException(
+            status_code=(
+                status.HTTP_404_NOT_FOUND
+            ),
+            detail=str(exc),
+        ) from exc
+
+    except OwnershipTransferError as exc:
+        raise HTTPException(
+            status_code=(
+                status.HTTP_409_CONFLICT
+            ),
+            detail=str(exc),
+        ) from exc
+
+    log_audit_event(
+        db=db,
+        action=(
+            "organization.ownership_transferred"
+        ),
+        resource_type=(
+            "organization"
+        ),
+        organization_id=(
+            organization_id
+        ),
+        user_id=(
+            previous_owner.user_id
+        ),
+        resource_id=str(
+            organization_id
+        ),
+        details={
+            "previous_owner_user_id":
+                str(
+                    previous_owner.user_id
+                ),
+            "new_owner_user_id":
+                str(
+                    new_owner.user_id
+                ),
+            "new_owner_membership_id":
+                str(
+                    new_owner.id
+                ),
+        },
+    )
+
+    return serialize_membership(
+        new_owner
     )
 
 
