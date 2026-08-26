@@ -26,6 +26,10 @@ class OwnerModificationError(Exception):
     pass
 
 
+class OwnershipTransferError(Exception):
+    pass
+
+
 def list_organization_members(
     db: Session,
     organization_id: uuid.UUID,
@@ -191,3 +195,119 @@ def remove_organization_member(
 
     db.delete(membership)
     db.commit()
+
+
+def transfer_organization_ownership(
+    db: Session,
+    *,
+    organization_id: uuid.UUID,
+    current_owner_member_id: uuid.UUID,
+    target_member_id: uuid.UUID,
+) -> tuple[
+    OrganizationMember,
+    OrganizationMember,
+]:
+    if (
+        current_owner_member_id
+        == target_member_id
+    ):
+        raise OwnershipTransferError(
+            "Ownership cannot be transferred "
+            "to the current owner"
+        )
+
+    owner_statement = (
+        select(OrganizationMember)
+        .options(
+            joinedload(
+                OrganizationMember.user
+            ),
+        )
+        .where(
+            OrganizationMember.id
+            == current_owner_member_id,
+            OrganizationMember.organization_id
+            == organization_id,
+        )
+        .with_for_update()
+    )
+
+    target_statement = (
+        select(OrganizationMember)
+        .options(
+            joinedload(
+                OrganizationMember.user
+            ),
+        )
+        .where(
+            OrganizationMember.id
+            == target_member_id,
+            OrganizationMember.organization_id
+            == organization_id,
+        )
+        .with_for_update()
+    )
+
+    current_owner = db.scalar(
+        owner_statement
+    )
+
+    target_member = db.scalar(
+        target_statement
+    )
+
+    if current_owner is None:
+        raise OwnershipTransferError(
+            "Current owner membership "
+            "could not be found"
+        )
+
+    if (
+        current_owner.role
+        != OrganizationRole.owner
+    ):
+        raise OwnershipTransferError(
+            "Only the current organization "
+            "owner can transfer ownership"
+        )
+
+    if target_member is None:
+        raise MemberNotFoundError(
+            "Target organization member "
+            "not found"
+        )
+
+    if (
+        target_member.role
+        == OrganizationRole.owner
+    ):
+        raise OwnershipTransferError(
+            "Target member is already "
+            "the organization owner"
+        )
+
+    current_owner.role = (
+        OrganizationRole.admin
+    )
+
+    target_member.role = (
+        OrganizationRole.owner
+    )
+
+    try:
+        db.add(current_owner)
+        db.add(target_member)
+
+        db.commit()
+
+    except Exception:
+        db.rollback()
+        raise
+
+    db.refresh(current_owner)
+    db.refresh(target_member)
+
+    return (
+        current_owner,
+        target_member,
+    )
