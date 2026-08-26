@@ -1,13 +1,15 @@
 import Link from "next/link";
 import {
   Activity,
+  BookOpen,
   Bot,
   FileText,
   Gauge,
+  MessageSquare,
   ShieldCheck,
   TriangleAlert,
-  BookOpen,
 } from "lucide-react";
+
 
 const navigation = [
   {
@@ -26,9 +28,14 @@ const navigation = [
     icon: FileText,
   },
   {
-  label: "Knowledge",
-  href: "/knowledge",
-  icon: BookOpen,
+    label: "Knowledge",
+    href: "/knowledge",
+    icon: BookOpen,
+  },
+  {
+    label: "Conversations",
+    href: "/conversations",
+    icon: MessageSquare,
   },
   {
     label: "Incidents",
@@ -47,13 +54,15 @@ const navigation = [
   },
 ];
 
+
 export function Sidebar() {
   return (
     <aside
       style={{
         width: 252,
         background: "#ffffff",
-        borderRight: "1px solid #e4e7ec",
+        borderRight:
+          "1px solid #e4e7ec",
         padding: "20px 16px",
         display: "flex",
         flexDirection: "column",
@@ -64,7 +73,8 @@ export function Sidebar() {
           display: "flex",
           alignItems: "center",
           gap: 10,
-          padding: "4px 8px 24px",
+          padding:
+            "4px 8px 24px",
         }}
       >
         <div
@@ -72,10 +82,12 @@ export function Sidebar() {
             width: 34,
             height: 34,
             borderRadius: 10,
-            background: "#111827",
+            background:
+              "#111827",
             color: "#ffffff",
             display: "grid",
-            placeItems: "center",
+            placeItems:
+              "center",
             fontWeight: 700,
           }}
         >
@@ -103,50 +115,70 @@ export function Sidebar() {
         </div>
       </div>
 
+
       <nav
         style={{
           display: "flex",
-          flexDirection: "column",
+          flexDirection:
+            "column",
           gap: 6,
         }}
       >
-        {navigation.map((item) => {
-          const Icon = item.icon;
+        {navigation.map(
+          (item) => {
+            const Icon =
+              item.icon;
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              style={{
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                borderRadius: 10,
-                padding: "10px 12px",
-                color: "#667085",
-                fontWeight: 500,
-              }}
-            >
-              <Icon size={18} />
-              {item.label}
-            </Link>
-          );
-        })}
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                style={{
+                  width: "100%",
+                  display:
+                    "flex",
+                  alignItems:
+                    "center",
+                  gap: 10,
+                  borderRadius:
+                    10,
+                  padding:
+                    "10px 12px",
+                  color:
+                    "#667085",
+                  fontWeight:
+                    500,
+                  textDecoration:
+                    "none",
+                }}
+              >
+                <Icon
+                  size={18}
+                />
+
+                {item.label}
+              </Link>
+            );
+          },
+        )}
       </nav>
+
 
       <div
         style={{
           marginTop: "auto",
-          borderTop: "1px solid #e4e7ec",
+          borderTop:
+            "1px solid #e4e7ec",
           paddingTop: 16,
         }}
       >
         <div
           style={{
-            padding: "10px 12px",
+            padding:
+              "10px 12px",
             borderRadius: 10,
-            background: "#f8fafc",
+            background:
+              "#f8fafc",
           }}
         >
           <div
@@ -162,7 +194,8 @@ export function Sidebar() {
             style={{
               marginTop: 4,
               fontSize: 12,
-              color: "#98a2b3",
+              color:
+                "#98a2b3",
             }}
           >
             Production
