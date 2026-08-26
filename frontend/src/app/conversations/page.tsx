@@ -6,6 +6,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
 import {
   Bot,
   Clock3,
@@ -60,43 +61,56 @@ type ConversationDetail =
 
 
 export default function ConversationsPage() {
+  const router = useRouter();
+
   const [conversations, setConversations] =
     useState<Conversation[]>([]);
 
   const [
     selectedConversation,
     setSelectedConversation,
-  ] = useState<ConversationDetail | null>(
-    null,
-  );
+  ] =
+    useState<ConversationDetail | null>(
+      null,
+    );
 
   const [loading, setLoading] =
     useState(true);
 
-  const [loadingConversation, setLoadingConversation] =
-    useState(false);
+  const [
+    loadingConversation,
+    setLoadingConversation,
+  ] = useState(false);
 
   const [creating, setCreating] =
     useState(false);
 
-  const [deletingId, setDeletingId] =
-    useState<string | null>(null);
+  const [
+    deletingId,
+    setDeletingId,
+  ] = useState<string | null>(
+    null,
+  );
 
   const [search, setSearch] =
     useState("");
 
   const [error, setError] =
-    useState<string | null>(null);
+    useState<string | null>(
+      null,
+    );
 
 
   const loadConversations =
     useCallback(async () => {
-      const session = getSession();
+      const session =
+        getSession();
 
       if (!session) {
         setError(
           "No active session. Sign in before loading conversations.",
         );
+
         setLoading(false);
         return;
       }
@@ -116,21 +130,31 @@ export default function ConversationsPage() {
             },
           );
 
-        setConversations(result);
+        setConversations(
+          result,
+        );
 
-        if (
-          selectedConversation &&
-          !result.some(
-            (item) =>
-              item.id ===
-              selectedConversation.id,
-          )
-        ) {
-          setSelectedConversation(
-            null,
-          );
-        }
-      } catch (requestError) {
+        setSelectedConversation(
+          (current) => {
+            if (!current) {
+              return null;
+            }
+
+            const stillExists =
+              result.some(
+                (item) =>
+                  item.id ===
+                  current.id,
+              );
+
+            return stillExists
+              ? current
+              : null;
+          },
+        );
+      } catch (
+        requestError
+      ) {
         setError(
           getErrorMessage(
             requestError,
@@ -140,7 +164,7 @@ export default function ConversationsPage() {
       } finally {
         setLoading(false);
       }
-    }, [selectedConversation]);
+    }, []);
 
 
   useEffect(() => {
@@ -151,7 +175,9 @@ export default function ConversationsPage() {
   const filteredConversations =
     useMemo(() => {
       const query =
-        search.trim().toLowerCase();
+        search
+          .trim()
+          .toLowerCase();
 
       if (!query) {
         return conversations;
@@ -163,22 +189,31 @@ export default function ConversationsPage() {
             .toLowerCase()
             .includes(query),
       );
-    }, [conversations, search]);
+    }, [
+      conversations,
+      search,
+    ]);
 
 
   async function openConversation(
-    conversation: Conversation,
+    conversation:
+      Conversation,
   ) {
-    const session = getSession();
+    const session =
+      getSession();
 
     if (!session) {
       setError(
         "No active session.",
       );
+
       return;
     }
 
-    setLoadingConversation(true);
+    setLoadingConversation(
+      true,
+    );
+
     setError(null);
 
     try {
@@ -196,7 +231,9 @@ export default function ConversationsPage() {
       setSelectedConversation(
         result,
       );
-    } catch (requestError) {
+    } catch (
+      requestError
+    ) {
       setError(
         getErrorMessage(
           requestError,
@@ -204,18 +241,22 @@ export default function ConversationsPage() {
         ),
       );
     } finally {
-      setLoadingConversation(false);
+      setLoadingConversation(
+        false,
+      );
     }
   }
 
 
   async function createConversation() {
-    const session = getSession();
+    const session =
+      getSession();
 
     if (!session) {
       setError(
         "No active session.",
       );
+
       return;
     }
 
@@ -236,6 +277,7 @@ export default function ConversationsPage() {
       setError(
         "Conversation title cannot be empty.",
       );
+
       return;
     }
 
@@ -252,9 +294,11 @@ export default function ConversationsPage() {
             method: "POST",
             token:
               session.accessToken,
-            body: JSON.stringify({
-              title: cleanTitle,
-            }),
+            body:
+              JSON.stringify({
+                title:
+                  cleanTitle,
+              }),
           },
         );
 
@@ -268,7 +312,9 @@ export default function ConversationsPage() {
       await openConversation(
         created,
       );
-    } catch (requestError) {
+    } catch (
+      requestError
+    ) {
       setError(
         getErrorMessage(
           requestError,
@@ -282,7 +328,8 @@ export default function ConversationsPage() {
 
 
   async function deleteConversation(
-    conversation: Conversation,
+    conversation:
+      Conversation,
   ) {
     const confirmed =
       window.confirm(
@@ -293,18 +340,21 @@ export default function ConversationsPage() {
       return;
     }
 
-    const session = getSession();
+    const session =
+      getSession();
 
     if (!session) {
       setError(
         "No active session.",
       );
+
       return;
     }
 
     setDeletingId(
       conversation.id,
     );
+
     setError(null);
 
     try {
@@ -334,7 +384,9 @@ export default function ConversationsPage() {
           null,
         );
       }
-    } catch (requestError) {
+    } catch (
+      requestError
+    ) {
       setError(
         getErrorMessage(
           requestError,
@@ -347,6 +399,21 @@ export default function ConversationsPage() {
   }
 
 
+  function continueInCopilot() {
+    if (
+      !selectedConversation
+    ) {
+      return;
+    }
+
+    router.push(
+      `/copilot?conversationId=${encodeURIComponent(
+        selectedConversation.id,
+      )}`,
+    );
+  }
+
+
   return (
     <AppShell>
       <div
@@ -354,7 +421,8 @@ export default function ConversationsPage() {
           display: "flex",
           justifyContent:
             "space-between",
-          alignItems: "flex-start",
+          alignItems:
+            "flex-start",
           gap: 20,
         }}
       >
@@ -365,8 +433,9 @@ export default function ConversationsPage() {
 
           <p className="page-subtitle">
             Reopen previous AIOS
-            knowledge and Copilot
-            conversations.
+            knowledge conversations
+            and continue them in
+            Copilot.
           </p>
         </div>
 
@@ -382,9 +451,14 @@ export default function ConversationsPage() {
               void loadConversations()
             }
             disabled={loading}
-            style={secondaryButtonStyle}
+            style={
+              secondaryButtonStyle
+            }
           >
-            <RefreshCw size={15} />
+            <RefreshCw
+              size={15}
+            />
+
             Refresh
           </button>
 
@@ -394,12 +468,18 @@ export default function ConversationsPage() {
               void createConversation()
             }
             disabled={creating}
-            style={primaryButtonStyle}
+            style={
+              primaryButtonStyle
+            }
           >
             {creating ? (
-              <Loader2 size={15} />
+              <Loader2
+                size={15}
+              />
             ) : (
-              <Plus size={15} />
+              <Plus
+                size={15}
+              />
             )}
 
             New conversation
@@ -412,9 +492,11 @@ export default function ConversationsPage() {
         <div
           style={{
             marginTop: 18,
-            padding: "12px 14px",
+            padding:
+              "12px 14px",
             borderRadius: 10,
-            background: "#fef3f2",
+            background:
+              "#fef3f2",
             color: "#b42318",
             fontSize: 12,
           }}
@@ -437,7 +519,8 @@ export default function ConversationsPage() {
         <article
           className="card"
           style={{
-            overflow: "hidden",
+            overflow:
+              "hidden",
           }}
         >
           <div
@@ -450,20 +533,25 @@ export default function ConversationsPage() {
             <div
               style={{
                 fontSize: 14,
-                fontWeight: 700,
+                fontWeight:
+                  700,
               }}
             >
-              Conversation History
+              Conversation
+              History
             </div>
 
             <div
               style={{
                 marginTop: 4,
-                color: "#98a2b3",
+                color:
+                  "#98a2b3",
                 fontSize: 11,
               }}
             >
-              {conversations.length}{" "}
+              {
+                conversations.length
+              }{" "}
               saved conversations
             </div>
 
@@ -472,12 +560,14 @@ export default function ConversationsPage() {
               style={{
                 marginTop: 14,
                 display: "flex",
-                alignItems: "center",
+                alignItems:
+                  "center",
                 gap: 8,
                 border:
                   "1px solid #d0d5dd",
                 borderRadius: 9,
-                padding: "8px 10px",
+                padding:
+                  "8px 10px",
               }}
             >
               <Search
@@ -487,9 +577,12 @@ export default function ConversationsPage() {
 
               <input
                 value={search}
-                onChange={(event) =>
+                onChange={(
+                  event,
+                ) =>
                   setSearch(
-                    event.target.value,
+                    event.target
+                      .value,
                   )
                 }
                 placeholder="Search conversations"
@@ -509,7 +602,8 @@ export default function ConversationsPage() {
           <div
             style={{
               maxHeight: 540,
-              overflowY: "auto",
+              overflowY:
+                "auto",
             }}
           >
             {loading ? (
@@ -527,7 +621,9 @@ export default function ConversationsPage() {
               />
             ) : (
               filteredConversations.map(
-                (conversation) => (
+                (
+                  conversation,
+                ) => (
                   <ConversationItem
                     key={
                       conversation.id
@@ -564,7 +660,8 @@ export default function ConversationsPage() {
         <article
           className="card"
           style={{
-            overflow: "hidden",
+            overflow:
+              "hidden",
           }}
         >
           {loadingConversation ? (
@@ -593,62 +690,104 @@ export default function ConversationsPage() {
             <>
               <div
                 style={{
-                  padding: "18px 20px",
+                  padding:
+                    "18px 20px",
                   borderBottom:
                     "1px solid #e4e7ec",
+                  display:
+                    "flex",
+                  justifyContent:
+                    "space-between",
+                  alignItems:
+                    "center",
+                  gap: 16,
                 }}
               >
-                <div
-                  style={{
-                    fontSize: 15,
-                    fontWeight: 700,
-                  }}
-                >
-                  {
-                    selectedConversation.title
+                <div>
+                  <div
+                    style={{
+                      fontSize:
+                        15,
+                      fontWeight:
+                        700,
+                    }}
+                  >
+                    {
+                      selectedConversation.title
+                    }
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: 5,
+                      display:
+                        "flex",
+                      alignItems:
+                        "center",
+                      gap: 6,
+                      color:
+                        "#98a2b3",
+                      fontSize:
+                        11,
+                    }}
+                  >
+                    <Clock3
+                      size={12}
+                    />
+
+                    Updated{" "}
+                    {formatDate(
+                      selectedConversation.updated_at,
+                    )}
+
+                    <span>
+                      •
+                    </span>
+
+                    {
+                      selectedConversation
+                        .messages
+                        .length
+                    }{" "}
+                    messages
+                  </div>
+                </div>
+
+
+                <button
+                  type="button"
+                  onClick={
+                    continueInCopilot
                   }
-                </div>
-
-                <div
-                  style={{
-                    marginTop: 5,
-                    display: "flex",
-                    alignItems:
-                      "center",
-                    gap: 6,
-                    color: "#98a2b3",
-                    fontSize: 11,
-                  }}
+                  style={
+                    primaryButtonStyle
+                  }
                 >
-                  <Clock3 size={12} />
+                  <Bot
+                    size={15}
+                  />
 
-                  Updated{" "}
-                  {formatDate(
-                    selectedConversation.updated_at,
-                  )}
-
-                  <span>•</span>
-
-                  {
-                    selectedConversation
-                      .messages.length
-                  }{" "}
-                  messages
-                </div>
+                  Continue in
+                  Copilot
+                </button>
               </div>
 
 
               <div
                 style={{
                   padding: 22,
-                  display: "grid",
+                  display:
+                    "grid",
                   gap: 18,
-                  maxHeight: 540,
-                  overflowY: "auto",
+                  maxHeight:
+                    540,
+                  overflowY:
+                    "auto",
                 }}
               >
                 {selectedConversation
-                  .messages.length ===
+                  .messages
+                  .length ===
                 0 ? (
                   <div
                     style={{
@@ -657,16 +796,21 @@ export default function ConversationsPage() {
                         "center",
                       color:
                         "#98a2b3",
-                      fontSize: 12,
+                      fontSize:
+                        12,
                     }}
                   >
-                    This conversation
-                    does not contain
-                    any messages yet.
+                    This
+                    conversation
+                    does not
+                    contain any
+                    messages yet.
                   </div>
                 ) : (
                   selectedConversation.messages.map(
-                    (message) => (
+                    (
+                      message,
+                    ) => (
                       <MessageBubble
                         key={
                           message.id
@@ -695,7 +839,8 @@ function ConversationItem({
   onOpen,
   onDelete,
 }: {
-  conversation: Conversation;
+  conversation:
+    Conversation;
   selected: boolean;
   deleting: boolean;
   onOpen: () => void;
@@ -705,14 +850,17 @@ function ConversationItem({
     <div
       style={{
         display: "flex",
-        alignItems: "center",
+        alignItems:
+          "center",
         gap: 8,
-        padding: "12px 12px",
+        padding:
+          "12px 12px",
         borderBottom:
           "1px solid #f0f1f3",
-        background: selected
-          ? "#f8fafc"
-          : "#ffffff",
+        background:
+          selected
+            ? "#f8fafc"
+            : "#ffffff",
       }}
     >
       <button
@@ -724,8 +872,10 @@ function ConversationItem({
           border: "none",
           background:
             "transparent",
-          cursor: "pointer",
-          textAlign: "left",
+          cursor:
+            "pointer",
+          textAlign:
+            "left",
           padding: 4,
         }}
       >
@@ -763,10 +913,13 @@ function ConversationItem({
                 selected
                   ? 700
                   : 600,
-              color: "#344054",
+              color:
+                "#344054",
             }}
           >
-            {conversation.title}
+            {
+              conversation.title
+            }
           </div>
         </div>
 
@@ -774,7 +927,8 @@ function ConversationItem({
           style={{
             marginTop: 6,
             marginLeft: 23,
-            color: "#98a2b3",
+            color:
+              "#98a2b3",
             fontSize: 10,
           }}
         >
@@ -787,24 +941,33 @@ function ConversationItem({
 
       <button
         type="button"
-        onClick={onDelete}
-        disabled={deleting}
+        onClick={
+          onDelete
+        }
+        disabled={
+          deleting
+        }
         title="Delete conversation"
         style={{
           border: "none",
           background:
             "transparent",
           color: "#b42318",
-          cursor: deleting
-            ? "not-allowed"
-            : "pointer",
+          cursor:
+            deleting
+              ? "not-allowed"
+              : "pointer",
           padding: 6,
         }}
       >
         {deleting ? (
-          <Loader2 size={14} />
+          <Loader2
+            size={14}
+          />
         ) : (
-          <Trash2 size={14} />
+          <Trash2
+            size={14}
+          />
         )}
       </button>
     </div>
@@ -815,10 +978,12 @@ function ConversationItem({
 function MessageBubble({
   message,
 }: {
-  message: ConversationMessage;
+  message:
+    ConversationMessage;
 }) {
   const isUser =
-    message.role === "user";
+    message.role ===
+    "user";
 
   const isAssistant =
     message.role ===
@@ -836,20 +1001,23 @@ function MessageBubble({
     >
       <div
         style={{
-          width: "min(82%, 760px)",
+          width:
+            "min(82%, 760px)",
         }}
       >
         <div
           style={{
             display: "flex",
-            alignItems: "center",
+            alignItems:
+              "center",
             justifyContent:
               isUser
                 ? "flex-end"
                 : "flex-start",
             gap: 6,
             marginBottom: 6,
-            color: "#667085",
+            color:
+              "#667085",
             fontSize: 10,
             fontWeight: 600,
             textTransform:
@@ -857,9 +1025,13 @@ function MessageBubble({
           }}
         >
           {isUser ? (
-            <User size={12} />
+            <User
+              size={12}
+            />
           ) : isAssistant ? (
-            <Bot size={12} />
+            <Bot
+              size={12}
+            />
           ) : (
             <MessageSquare
               size={12}
@@ -879,20 +1051,24 @@ function MessageBubble({
         <div
           style={{
             borderRadius: 14,
-            padding: "13px 15px",
-            background: isUser
-              ? "#111827"
-              : "#f8fafc",
-            color: isUser
-              ? "#ffffff"
-              : "#344054",
+            padding:
+              "13px 15px",
+            background:
+              isUser
+                ? "#111827"
+                : "#f8fafc",
+            color:
+              isUser
+                ? "#ffffff"
+                : "#344054",
             fontSize: 13,
             lineHeight: 1.7,
             whiteSpace:
               "pre-wrap",
-            border: isUser
-              ? "none"
-              : "1px solid #e4e7ec",
+            border:
+              isUser
+                ? "none"
+                : "1px solid #e4e7ec",
           }}
         >
           {message.content}
@@ -917,9 +1093,11 @@ function ConversationEmpty({
       style={{
         height: 560,
         display: "grid",
-        placeItems: "center",
+        placeItems:
+          "center",
         padding: 30,
-        textAlign: "center",
+        textAlign:
+          "center",
       }}
     >
       <div>
@@ -940,7 +1118,8 @@ function ConversationEmpty({
             maxWidth: 420,
             margin:
               "7px auto 0",
-            color: "#98a2b3",
+            color:
+              "#98a2b3",
             fontSize: 12,
             lineHeight: 1.6,
           }}
@@ -961,9 +1140,12 @@ function SidebarEmpty({
   return (
     <div
       style={{
-        padding: "42px 18px",
-        textAlign: "center",
-        color: "#98a2b3",
+        padding:
+          "42px 18px",
+        textAlign:
+          "center",
+        color:
+          "#98a2b3",
         fontSize: 12,
       }}
     >
