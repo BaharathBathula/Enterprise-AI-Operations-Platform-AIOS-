@@ -95,8 +95,8 @@ def list_incidents(
 def create_incident(
     organization_id: uuid.UUID,
     payload: IncidentCreate,
-        _: OrganizationMember = Depends(
-        require_organization_admin,
+    _: OrganizationMember = Depends(
+        require_organization_member,
     ),
     current_user: User = Depends(
         get_current_user,
@@ -158,7 +158,7 @@ def update_incident(
     incident_id: uuid.UUID,
     payload: IncidentUpdate,
     _: OrganizationMember = Depends(
-        require_organization_member,
+        require_organization_admin,
     ),
     db: Session = Depends(get_db),
 ) -> Incident:
@@ -201,7 +201,7 @@ def update_incident(
 def delete_incident(
     organization_id: uuid.UUID,
     incident_id: uuid.UUID,
-        _: OrganizationMember = Depends(
+    _: OrganizationMember = Depends(
         require_organization_admin,
     ),
     db: Session = Depends(get_db),
