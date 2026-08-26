@@ -9,7 +9,6 @@ import {
   Play,
   Send,
   ShieldCheck,
-  Sparkles,
   User,
   X,
 } from "lucide-react";
@@ -20,7 +19,10 @@ import {
   useRef,
   useState,
 } from "react";
-import { useRouter } from "next/navigation";
+import {
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
 
 import {
   ApiError,
@@ -56,6 +58,27 @@ type RAGResponse = {
 };
 
 
+type PersistedMessage = {
+  id: string;
+  conversation_id: string;
+  organization_id: string;
+  role: string;
+  content: string;
+  created_at: string;
+};
+
+
+type ConversationDetail = {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  messages: PersistedMessage[];
+};
+
+
 type ApprovalStatus =
   | "pending"
   | "approved"
@@ -69,31 +92,14 @@ type ToolApproval = {
   organization_id: string;
   requested_by_user_id: string;
   conversation_id: string | null;
-
   tool_name: string;
-  arguments: Record<
-    string,
-    unknown
-  >;
-
+  arguments: Record<string, unknown>;
   status: ApprovalStatus;
-
-  reviewed_by_user_id:
-    | string
-    | null;
-
-  review_note:
-    | string
-    | null;
-
+  reviewed_by_user_id: string | null;
+  review_note: string | null;
   created_at: string;
-  reviewed_at:
-    | string
-    | null;
-
-  executed_at:
-    | string
-    | null;
+  reviewed_at: string | null;
+  executed_at: string | null;
 };
 
 
@@ -101,10 +107,7 @@ type ToolExecutionResponse = {
   success: boolean;
   message: string | null;
   error: string | null;
-  data: Record<
-    string,
-    unknown
-  >;
+  data: Record<string, unknown>;
 };
 
 
@@ -124,9 +127,7 @@ type ApprovalState = {
 
 type ChatMessage = {
   id: string;
-  role:
-    | "user"
-    | "assistant";
+  role: "user" | "assistant";
   content: string;
   mode?: CopilotMode;
   sources?: Source[];
@@ -152,9 +153,16 @@ const welcomeMessage: ChatMessage = {
 
 export function CopilotClient() {
   const router = useRouter();
+  const searchParams =
+    useSearchParams();
 
   const bottomRef =
     useRef<HTMLDivElement | null>(
+      null,
+    );
+
+  const restoredConversationRef =
+    useRef<string | null>(
       null,
     );
 
@@ -171,6 +179,11 @@ export function CopilotClient() {
     setSessionReady,
   ] = useState(false);
 
+  const [
+    restoringConversation,
+    setRestoringConversation,
+  ] = useState(false);
+
   const [mode, setMode] =
     useState<CopilotMode>(
       "knowledge",
@@ -179,9 +192,16 @@ export function CopilotClient() {
   const [
     conversationId,
     setConversationId,
-  ] = useState<
-    string | null
-  >(null);
+  ] = useState<string | null>(
+    null,
+  );
+
+  const [
+    conversationTitle,
+    setConversationTitle,
+  ] = useState<string | null>(
+    null,
+  );
 
   const [input, setInput] =
     useState("");
@@ -192,9 +212,9 @@ export function CopilotClient() {
   const [
     messages,
     setMessages,
-  ] = useState<
-    ChatMessage[]
-  >([welcomeMessage]);
+  ] = useState<ChatMessage[]>([
+    welcomeMessage,
+  ]);
 
 
   useEffect(() => {
@@ -202,18 +222,53 @@ export function CopilotClient() {
       getSession();
 
     if (!currentSession) {
-      router.replace(
-        "/login",
-      );
+      router.replace("/login");
       return;
     }
 
-    setSession(
-      currentSession,
-    );
-
+    setSession(currentSession);
     setSessionReady(true);
   }, [router]);
+
+
+  useEffect(() => {
+    if (
+      !sessionReady ||
+      !session
+    ) {
+      return;
+    }
+
+    const requestedConversationId =
+      searchParams.get(
+        "conversationId",
+      );
+
+    if (
+      !requestedConversationId
+    ) {
+      return;
+    }
+
+    if (
+      restoredConversationRef.current ===
+      requestedConversationId
+    ) {
+      return;
+    }
+
+    restoredConversationRef.current =
+      requestedConversationId;
+
+    void restoreConversation(
+      requestedConversationId,
+      session,
+    );
+  }, [
+    searchParams,
+    session,
+    sessionReady,
+  ]);
 
 
   useEffect(() => {
@@ -225,21 +280,154 @@ export function CopilotClient() {
   }, [
     messages,
     loading,
+    restoringConversation,
   ]);
 
 
+  async function restoreConversation(
+    requestedConversationId: string,
+    activeSession: SessionData,
+  ) {
+    setRestoringConversation(
+      true,
+    );
+
+    setMode("knowledge");
+
+    try {
+      const response =
+        await apiRequest<
+          ConversationDetail
+        >(
+          `/organizations/${activeSession.organizationId}/conversations/${requestedConversationId}`,
+          {
+            token:
+              activeSession.accessToken,
+          },
+        );
+
+      const restoredMessages =
+        response.messages
+          .filter(
+            (message) =>
+              message.role ===
+                "user" ||
+              message.role ===
+                "assistant",
+          )
+          .map<ChatMessage>(
+            (message) => ({
+              id: message.id,
+              role:
+                message.role ===
+                "user"
+                  ? "user"
+                  : "assistant",
+              content:
+                message.content,
+              mode:
+                "knowledge",
+            }),
+          );
+
+      setConversationId(
+        response.id,
+      );
+
+      setConversationTitle(
+        response.title,
+      );
+
+      setMessages(
+        restoredMessages.length >
+          0
+          ? restoredMessages
+          : [
+              {
+                id:
+                  "empty-conversation",
+                role:
+                  "assistant",
+                mode:
+                  "knowledge",
+                content:
+                  "This conversation does not contain any messages yet. Ask a question to continue it.",
+              },
+            ],
+      );
+    } catch (error) {
+      restoredConversationRef.current =
+        null;
+
+      if (
+        error instanceof
+          ApiError &&
+        error.status === 401
+      ) {
+        clearSession();
+
+        router.replace(
+          "/login",
+        );
+
+        return;
+      }
+
+      const message =
+        error instanceof
+        ApiError
+          ? `Unable to restore conversation (${error.status}): ${error.detail}`
+          : "Unable to restore the selected conversation.";
+
+      setMessages([
+        {
+          id:
+            createMessageId(),
+          role:
+            "assistant",
+          content: message,
+          isError: true,
+        },
+      ]);
+
+      setConversationId(
+        null,
+      );
+
+      setConversationTitle(
+        null,
+      );
+    } finally {
+      setRestoringConversation(
+        false,
+      );
+    }
+  }
+
+
   function startNewConversation() {
-    if (loading) {
+    if (
+      loading ||
+      restoringConversation
+    ) {
       return;
     }
 
+    restoredConversationRef.current =
+      null;
+
     setConversationId(null);
+    setConversationTitle(null);
 
     setMessages([
       welcomeMessage,
     ]);
 
     setInput("");
+
+    router.replace(
+      "/copilot",
+    );
   }
 
 
@@ -260,6 +448,7 @@ export function CopilotClient() {
     if (
       !message ||
       loading ||
+      restoringConversation ||
       !session
     ) {
       return;
@@ -333,9 +522,25 @@ export function CopilotClient() {
         },
       );
 
+    const isNewConversation =
+      !conversationId;
+
     setConversationId(
       response.conversation_id,
     );
+
+    if (
+      isNewConversation
+    ) {
+      setConversationTitle(
+        message.length > 60
+          ? `${message.slice(
+              0,
+              60,
+            )}...`
+          : message,
+      );
+    }
 
     setMessages(
       (current) => [
@@ -429,16 +634,14 @@ export function CopilotClient() {
       "string"
     ) {
       content =
-        response.data
-          .answer;
+        response.data.answer;
     } else if (
       typeof response.data
         .message ===
       "string"
     ) {
       content =
-        response.data
-          .message;
+        response.data.message;
     }
 
     setMessages(
@@ -762,7 +965,8 @@ export function CopilotClient() {
 
       if (
         input.trim() &&
-        !loading
+        !loading &&
+        !restoringConversation
       ) {
         void sendMessage();
       }
@@ -770,7 +974,10 @@ export function CopilotClient() {
   }
 
 
-  if (!sessionReady) {
+  if (
+    !sessionReady ||
+    restoringConversation
+  ) {
     return (
       <section
         className="card"
@@ -796,8 +1003,9 @@ export function CopilotClient() {
             size={16}
           />
 
-          Loading AIOS
-          session...
+          {restoringConversation
+            ? "Restoring conversation..."
+            : "Loading AIOS session..."}
         </div>
       </section>
     );
@@ -846,8 +1054,7 @@ export function CopilotClient() {
             <div
               style={{
                 fontSize: 18,
-                fontWeight:
-                  700,
+                fontWeight: 700,
               }}
             >
               AIOS Copilot
@@ -862,10 +1069,9 @@ export function CopilotClient() {
               fontSize: 12,
             }}
           >
-            Enterprise
-            knowledge and
-            governed operational
-            actions
+            {conversationTitle
+              ? conversationTitle
+              : "Enterprise knowledge and governed operational actions"}
           </div>
         </div>
 
@@ -886,15 +1092,12 @@ export function CopilotClient() {
               gap: 6,
               padding:
                 "7px 10px",
-              borderRadius:
-                999,
+              borderRadius: 999,
               background:
                 "#ecfdf3",
-              color:
-                "#067647",
+              color: "#067647",
               fontSize: 11,
-              fontWeight:
-                700,
+              fontWeight: 700,
             }}
           >
             <ShieldCheck
@@ -909,7 +1112,9 @@ export function CopilotClient() {
             onClick={
               startNewConversation
             }
-            disabled={loading}
+            disabled={
+              loading
+            }
             style={
               secondaryButtonStyle
             }
@@ -992,7 +1197,9 @@ export function CopilotClient() {
         >
           {mode ===
           "knowledge"
-            ? "Knowledge mode uses processed workspace documents and persists the RAG conversation."
+            ? conversationId
+              ? "Continuing a persisted AIOS knowledge conversation."
+              : "Knowledge mode uses processed workspace documents and persists the RAG conversation."
             : "Agent mode invokes governed AIOS tools. Write actions can require approval before execution."}
         </div>
       </div>
@@ -1120,7 +1327,9 @@ export function CopilotClient() {
             placeholder={
               mode ===
               "knowledge"
-                ? "Ask a question about your enterprise documents..."
+                ? conversationId
+                  ? "Continue this knowledge conversation..."
+                  : "Ask a question about your enterprise documents..."
                 : "Request a governed operational action..."
             }
             rows={2}
@@ -1150,8 +1359,7 @@ export function CopilotClient() {
               width: 40,
               height: 40,
               flexShrink: 0,
-              borderRadius:
-                10,
+              borderRadius: 10,
               border: "none",
               background:
                 "#111827",
@@ -1198,15 +1406,14 @@ export function CopilotClient() {
         >
           <span>
             Enter to send •
-            Shift+Enter for new
-            line
+            Shift+Enter for new line
           </span>
 
           {conversationId &&
             mode ===
               "knowledge" && (
               <span>
-                Conversation{" "}
+                Persisted conversation{" "}
                 {conversationId.slice(
                   0,
                   8,
@@ -1343,8 +1550,7 @@ function MessageBubble({
         >
           <div
             style={{
-              borderRadius:
-                14,
+              borderRadius: 14,
               padding:
                 "13px 15px",
               background:
@@ -1716,7 +1922,8 @@ function StatusBadge({
     <span
       style={{
         borderRadius: 999,
-        padding: "4px 7px",
+        padding:
+          "4px 7px",
         background:
           "#ffffff",
         color: "#475467",
