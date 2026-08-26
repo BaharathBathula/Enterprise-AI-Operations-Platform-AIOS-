@@ -33,7 +33,9 @@ def list_organization_members(
     statement = (
         select(OrganizationMember)
         .options(
-            joinedload(OrganizationMember.user),
+            joinedload(
+                OrganizationMember.user
+            ),
         )
         .where(
             OrganizationMember.organization_id
@@ -44,7 +46,9 @@ def list_organization_members(
         )
     )
 
-    return list(db.scalars(statement).all())
+    return list(
+        db.scalars(statement).all()
+    )
 
 
 def add_organization_member(
@@ -53,34 +57,56 @@ def add_organization_member(
     email: str,
     role: OrganizationRole,
 ) -> OrganizationMember:
-    normalized_email = email.strip().lower()
+    if role == OrganizationRole.owner:
+        raise OwnerModificationError(
+            "Ownership transfer requires "
+            "a dedicated workflow"
+        )
 
-    user_statement = select(User).where(
-        User.email == normalized_email,
+    normalized_email = (
+        email.strip().lower()
     )
 
-    user = db.scalar(user_statement)
+    user_statement = (
+        select(User)
+        .where(
+            User.email
+            == normalized_email,
+        )
+    )
+
+    user = db.scalar(
+        user_statement
+    )
 
     if user is None:
         raise UserNotFoundError(
-            "No registered user exists with this email"
+            "No registered user exists "
+            "with this email"
         )
 
-    membership_statement = select(
-        OrganizationMember
-    ).where(
-        OrganizationMember.organization_id
-        == organization_id,
-        OrganizationMember.user_id == user.id,
+    membership_statement = (
+        select(
+            OrganizationMember
+        )
+        .where(
+            OrganizationMember.organization_id
+            == organization_id,
+            OrganizationMember.user_id
+            == user.id,
+        )
     )
 
-    existing_membership = db.scalar(
-        membership_statement
+    existing_membership = (
+        db.scalar(
+            membership_statement
+        )
     )
 
     if existing_membership is not None:
         raise MemberAlreadyExistsError(
-            "User is already a member of this organization"
+            "User is already a member "
+            "of this organization"
         )
 
     membership = OrganizationMember(
@@ -104,10 +130,13 @@ def get_organization_member(
     statement = (
         select(OrganizationMember)
         .options(
-            joinedload(OrganizationMember.user),
+            joinedload(
+                OrganizationMember.user
+            ),
         )
         .where(
-            OrganizationMember.id == member_id,
+            OrganizationMember.id
+            == member_id,
             OrganizationMember.organization_id
             == organization_id,
         )
@@ -121,14 +150,22 @@ def update_member_role(
     membership: OrganizationMember,
     new_role: OrganizationRole,
 ) -> OrganizationMember:
-    if membership.role == OrganizationRole.owner:
+    if (
+        membership.role
+        == OrganizationRole.owner
+    ):
         raise OwnerModificationError(
-            "Organization owner role cannot be modified"
+            "Organization owner role "
+            "cannot be modified"
         )
 
-    if new_role == OrganizationRole.owner:
+    if (
+        new_role
+        == OrganizationRole.owner
+    ):
         raise OwnerModificationError(
-            "Ownership transfer requires a dedicated workflow"
+            "Ownership transfer requires "
+            "a dedicated workflow"
         )
 
     membership.role = new_role
@@ -143,9 +180,13 @@ def remove_organization_member(
     db: Session,
     membership: OrganizationMember,
 ) -> None:
-    if membership.role == OrganizationRole.owner:
+    if (
+        membership.role
+        == OrganizationRole.owner
+    ):
         raise OwnerModificationError(
-            "Organization owner cannot be removed"
+            "Organization owner cannot "
+            "be removed"
         )
 
     db.delete(membership)
