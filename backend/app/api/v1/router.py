@@ -40,3 +40,6 @@ api_router.include_router(conversations_router)
 api_router.include_router(chat_router)
 api_router.include_router(audit_router)
 api_router.include_router(agent_router)
+api_router.include_router(
+    incidents_router
+)
