@@ -171,6 +171,10 @@ def approve_tool_approval(
     "/{approval_id}/reject",
     response_model=ToolApprovalResponse,
 )
+@router.post(
+    "/{approval_id}/reject",
+    response_model=ToolApprovalResponse,
+)
 def reject_tool_approval(
     organization_id: uuid.UUID,
     approval_id: uuid.UUID,
@@ -189,7 +193,7 @@ def reject_tool_approval(
         approval_id=approval_id,
     )
 
-        if approval is None:
+    if approval is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Tool approval request not found",
@@ -206,6 +210,11 @@ def reject_tool_approval(
 
     try:
         approval = reject_tool_request(
+            db=db,
+            approval=approval,
+            reviewed_by_user_id=current_user.id,
+            review_note=request.review_note,
+        )
 
     except ToolApprovalStateError as exc:
         raise HTTPException(
