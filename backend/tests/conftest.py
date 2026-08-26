@@ -5,26 +5,22 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool
 
+import app.models  # noqa: F401
 from app.db.base import Base
 from app.db.database import get_db
 from app.main import app
 
-# Import models so all SQLAlchemy tables are registered
-# in Base.metadata before create_all() runs.
-import app.models  # noqa: F401
 
-
-TEST_DATABASE_URL = "sqlite+pysqlite:///:memory:"
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL",
+    "postgresql+psycopg2://postgres:postgres@localhost:5432/aios_test",
+)
 
 
 test_engine = create_engine(
     TEST_DATABASE_URL,
-    connect_args={
-        "check_same_thread": False,
-    },
-    poolclass=StaticPool,
+    pool_pre_ping=True,
 )
 
 
@@ -35,12 +31,27 @@ TestingSessionLocal = sessionmaker(
 )
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(
+    scope="session",
+    autouse=True,
+)
 def test_database_schema() -> Generator[
     None,
     None,
     None,
 ]:
+    # AIOS uses pgvector for document embeddings.
+    # The extension must exist before SQLAlchemy
+    # creates the document_chunks table.
+    with test_engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE EXTENSION IF NOT EXISTS vector"
+        )
+
+    Base.metadata.drop_all(
+        bind=test_engine,
+    )
+
     Base.metadata.create_all(
         bind=test_engine,
     )
@@ -68,9 +79,12 @@ def db_session() -> Generator[
 
     try:
         yield session
+
     finally:
         session.close()
+
         transaction.rollback()
+
         connection.close()
 
 
