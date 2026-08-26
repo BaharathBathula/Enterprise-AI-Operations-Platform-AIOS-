@@ -54,11 +54,12 @@ def _add_member(
     db: Session,
     organization: Organization,
     user: User,
+    role: OrganizationRole = OrganizationRole.member,
 ) -> OrganizationMember:
     membership = OrganizationMember(
         organization_id=organization.id,
         user_id=user.id,
-        role=OrganizationRole.member,
+        role=role,
     )
 
     db.add(membership)
@@ -373,6 +374,7 @@ def test_foreign_incident_cannot_be_updated_through_own_organization(
         db_session,
         organization_a,
         user_a,
+        OrganizationRole.admin,
     )
 
     _add_member(
@@ -403,6 +405,10 @@ def test_foreign_incident_cannot_be_updated_through_own_organization(
     )
 
     assert response.status_code == 404
+
+    assert response.json() == {
+        "detail": "Incident not found",
+    }
 
     db_session.expire_all()
 
@@ -447,6 +453,7 @@ def test_foreign_incident_cannot_be_deleted_through_own_organization(
         db_session,
         organization_a,
         user_a,
+        OrganizationRole.admin,
     )
 
     _add_member(
@@ -474,6 +481,10 @@ def test_foreign_incident_cannot_be_deleted_through_own_organization(
     )
 
     assert response.status_code == 404
+
+    assert response.json() == {
+        "detail": "Incident not found",
+    }
 
     db_session.expire_all()
 
