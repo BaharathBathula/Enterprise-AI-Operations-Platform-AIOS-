@@ -6,6 +6,7 @@ import {
   Gauge,
   ShieldCheck,
   TriangleAlert,
+  BookOpen,
 } from "lucide-react";
 
 const navigation = [
@@ -23,6 +24,11 @@ const navigation = [
     label: "Documents",
     href: "/documents",
     icon: FileText,
+  },
+  {
+  label: "Knowledge",
+  href: "/knowledge",
+  icon: BookOpen,
   },
   {
     label: "Incidents",
