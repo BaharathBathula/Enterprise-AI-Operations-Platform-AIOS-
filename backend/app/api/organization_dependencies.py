@@ -33,6 +33,14 @@ def get_current_membership(
     return membership
 
 
+def require_organization_member(
+    membership: OrganizationMember = Depends(
+        get_current_membership,
+    ),
+) -> OrganizationMember:
+    return membership
+
+
 def require_organization_admin(
     membership: OrganizationMember = Depends(
         get_current_membership,
@@ -46,7 +54,10 @@ def require_organization_admin(
     if membership.role not in allowed_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Organization administrator access required",
+            detail=(
+                "Organization administrator "
+                "access required"
+            ),
         )
 
     return membership
@@ -60,7 +71,9 @@ def require_organization_owner(
     if membership.role != OrganizationRole.owner:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Organization owner access required",
+            detail=(
+                "Organization owner access required"
+            ),
         )
 
     return membership

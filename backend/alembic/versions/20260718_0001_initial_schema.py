@@ -28,11 +28,6 @@ organization_role = postgresql.ENUM(
 
 
 def upgrade() -> None:
-    organization_role.create(
-        op.get_bind(),
-        checkfirst=True,
-    )
-
     op.create_table(
         "users",
         sa.Column(
@@ -222,7 +217,9 @@ def upgrade() -> None:
         ),
         sa.Column(
             "details",
-            postgresql.JSONB(astext_type=sa.Text()),
+            postgresql.JSONB(
+                astext_type=sa.Text()
+            ),
             nullable=True,
         ),
         sa.Column(
@@ -278,40 +275,50 @@ def downgrade() -> None:
         op.f("ix_audit_logs_user_id"),
         table_name="audit_logs",
     )
+
     op.drop_index(
         op.f("ix_audit_logs_organization_id"),
         table_name="audit_logs",
     )
+
     op.drop_index(
         op.f("ix_audit_logs_created_at"),
         table_name="audit_logs",
     )
+
     op.drop_index(
         op.f("ix_audit_logs_action"),
         table_name="audit_logs",
     )
+
     op.drop_table("audit_logs")
 
     op.drop_index(
         op.f("ix_organization_members_user_id"),
         table_name="organization_members",
     )
+
     op.drop_index(
         op.f("ix_organization_members_organization_id"),
         table_name="organization_members",
     )
-    op.drop_table("organization_members")
+
+    op.drop_table(
+        "organization_members"
+    )
 
     op.drop_index(
         op.f("ix_organizations_slug"),
         table_name="organizations",
     )
+
     op.drop_table("organizations")
 
     op.drop_index(
         op.f("ix_users_email"),
         table_name="users",
     )
+
     op.drop_table("users")
 
     organization_role.drop(

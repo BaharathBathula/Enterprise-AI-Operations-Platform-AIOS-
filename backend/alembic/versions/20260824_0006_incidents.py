@@ -35,16 +35,7 @@ incident_status = postgresql.ENUM(
 
 
 def upgrade() -> None:
-    incident_severity.create(
-        op.get_bind(),
-        checkfirst=True,
-    )
-
-    incident_status.create(
-        op.get_bind(),
-        checkfirst=True,
-    )
-
+   
     op.create_table(
         "incidents",
         sa.Column(

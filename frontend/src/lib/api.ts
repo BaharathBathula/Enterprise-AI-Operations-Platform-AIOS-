@@ -35,11 +35,13 @@ export async function apiRequest<T>(
     ...requestOptions
   } = options;
 
-  const requestHeaders = new Headers(headers);
+  const requestHeaders =
+    new Headers(headers);
 
   if (
     requestOptions.body &&
-    !(requestOptions.body instanceof FormData)
+    !(requestOptions.body instanceof FormData) &&
+    !requestHeaders.has("Content-Type")
   ) {
     requestHeaders.set(
       "Content-Type",
@@ -63,16 +65,23 @@ export async function apiRequest<T>(
   );
 
   if (!response.ok) {
-    let detail = "API request failed";
+    let detail =
+      "API request failed";
 
     try {
-      const body = await response.json();
+      const body =
+        await response.json();
 
-      if (typeof body.detail === "string") {
+      if (
+        typeof body.detail ===
+        "string"
+      ) {
         detail = body.detail;
       }
     } catch {
-      detail = response.statusText || detail;
+      detail =
+        response.statusText ||
+        detail;
     }
 
     throw new ApiError(
@@ -85,5 +94,7 @@ export async function apiRequest<T>(
     return undefined as T;
   }
 
-  return (await response.json()) as T;
+  return (
+    await response.json()
+  ) as T;
 }

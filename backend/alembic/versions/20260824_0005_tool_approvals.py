@@ -28,11 +28,7 @@ tool_approval_status = postgresql.ENUM(
 
 
 def upgrade() -> None:
-    tool_approval_status.create(
-        op.get_bind(),
-        checkfirst=True,
-    )
-
+    
     op.create_table(
         "tool_approvals",
         sa.Column(

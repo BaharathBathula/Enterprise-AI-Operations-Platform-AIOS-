@@ -28,11 +28,6 @@ document_status = postgresql.ENUM(
 
 
 def upgrade() -> None:
-    document_status.create(
-        op.get_bind(),
-        checkfirst=True,
-    )
-
     op.create_table(
         "documents",
         sa.Column(

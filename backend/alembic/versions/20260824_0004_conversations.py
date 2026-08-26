@@ -26,11 +26,6 @@ message_role = postgresql.ENUM(
 
 
 def upgrade() -> None:
-    message_role.create(
-        op.get_bind(),
-        checkfirst=True,
-    )
-
     op.create_table(
         "conversations",
         sa.Column(
