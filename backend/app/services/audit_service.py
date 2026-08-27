@@ -16,11 +16,15 @@ def log_audit_event(
     user_id: uuid.UUID | None = None,
     resource_id: str | None = None,
     details: dict[str, Any] | None = None,
+    event_type: str = "general",
+    outcome: str = "success",
 ) -> AuditLog:
     audit_log = AuditLog(
         organization_id=organization_id,
         user_id=user_id,
+        event_type=event_type,
         action=action,
+        outcome=outcome,
         resource_type=resource_type,
         resource_id=resource_id,
         details=details,
