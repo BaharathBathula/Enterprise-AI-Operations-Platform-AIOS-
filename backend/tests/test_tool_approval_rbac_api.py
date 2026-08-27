@@ -1,9 +1,11 @@
 import uuid
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.security import create_access_token
+from app.models.audit_log import AuditLog
 from app.models.organization import Organization
 from app.models.organization_member import (
     OrganizationMember,
@@ -212,8 +214,6 @@ def test_requester_cannot_approve_own_tool_request(
         "Self Approval Org",
     )
 
-    # Make requester an admin so the test reaches
-    # the explicit separation-of-duties check.
     _add_membership(
         db_session,
         organization,
@@ -628,6 +628,105 @@ def test_approved_tool_request_executes_and_becomes_executed(
     )
 
     assert refreshed_approval.executed_at is not None
+
+
+def test_failed_tool_execution_creates_audit_log(
+    client: TestClient,
+    db_session: Session,
+):
+    requester = _create_user(
+        db_session,
+        "failed-audit-requester@example.com",
+    )
+
+    admin = _create_user(
+        db_session,
+        "failed-audit-admin@example.com",
+    )
+
+    organization = _create_organization(
+        db_session,
+        "Failed Execution Audit Org",
+    )
+
+    _add_membership(
+        db_session,
+        organization,
+        requester,
+        OrganizationRole.member,
+    )
+
+    _add_membership(
+        db_session,
+        organization,
+        admin,
+        OrganizationRole.admin,
+    )
+
+    approval = _create_approval(
+        db_session,
+        organization,
+        requester,
+        status=ToolApprovalStatus.approved,
+    )
+
+    approval.arguments = {
+        "title": "Invalid severity incident",
+        "description": "Force tool execution failure",
+        "severity": "invalid-severity",
+    }
+
+    db_session.commit()
+
+    response = client.post(
+        (
+            f"/api/v1/organizations/"
+            f"{organization.id}/tool-approvals/"
+            f"{approval.id}/execute"
+        ),
+        headers=_auth_headers(admin),
+    )
+
+    assert response.status_code == 409
+
+    db_session.expire_all()
+
+    statement = (
+        select(AuditLog)
+        .where(
+            AuditLog.organization_id
+            == organization.id,
+            AuditLog.resource_id
+            == str(approval.id),
+            AuditLog.action
+            == "tool.approval_execution_failed",
+        )
+    )
+
+    audit_log = db_session.scalar(statement)
+
+    assert audit_log is not None
+    assert audit_log.event_type == "tool_execution"
+    assert audit_log.outcome == "failed"
+    assert audit_log.user_id == admin.id
+    assert audit_log.resource_type == "tool_approval"
+
+    assert audit_log.details is not None
+
+    assert (
+        audit_log.details["tool_name"]
+        == "create_incident"
+    )
+
+    assert (
+        audit_log.details["requested_by_user_id"]
+        == str(requester.id)
+    )
+
+    assert (
+        "Invalid incident severity"
+        in audit_log.details["error"]
+    )
 
 
 def test_tool_approval_cannot_be_read_from_foreign_organization(
