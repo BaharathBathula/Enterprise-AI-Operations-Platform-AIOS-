@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import DateTime, ForeignKey, Index, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -32,9 +32,23 @@ class AuditLog(Base):
         index=True,
     )
 
+    event_type: Mapped[str] = mapped_column(
+        String(120),
+        nullable=False,
+        index=True,
+        default="general",
+    )
+
     action: Mapped[str] = mapped_column(
         String(100),
         nullable=False,
+        index=True,
+    )
+
+    outcome: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="success",
         index=True,
     )
 
@@ -58,4 +72,17 @@ class AuditLog(Base):
         server_default=func.now(),
         nullable=False,
         index=True,
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_audit_logs_org_created_at",
+            "organization_id",
+            "created_at",
+        ),
+        Index(
+            "ix_audit_logs_org_event_type",
+            "organization_id",
+            "event_type",
+        ),
     )
