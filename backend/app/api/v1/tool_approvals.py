@@ -127,28 +127,28 @@ def approve_tool_approval(
         )
 
     if approval.requested_by_user_id == current_user.id:
-    log_audit_event(
-        db=db,
-        event_type="authorization",
-        action="tool.self_rejection_denied",
-        outcome="denied",
-        resource_type="tool_approval",
-        organization_id=organization_id,
-        user_id=current_user.id,
-        resource_id=str(approval.id),
-        details={
-            "tool_name": approval.tool_name,
-            "reason": "self_rejection_not_allowed",
-        },
-    )
+        log_audit_event(
+            db=db,
+            event_type="authorization",
+            action="tool.self_approval_denied",
+            outcome="denied",
+            resource_type="tool_approval",
+            organization_id=organization_id,
+            user_id=current_user.id,
+            resource_id=str(approval.id),
+            details={
+                "tool_name": approval.tool_name,
+                "reason": "self_approval_not_allowed",
+            },
+        )
 
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail=(
-            "Users cannot reject their own "
-            "tool requests"
-        ),
-    )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Users cannot approve their own "
+                "tool requests"
+            ),
+        )
 
     try:
         approval = approve_tool_request(
@@ -213,28 +213,28 @@ def reject_tool_approval(
         )
 
     if approval.requested_by_user_id == current_user.id:
-    log_audit_event(
-        db=db,
-        event_type="authorization",
-        action="tool.self_approval_denied",
-        outcome="denied",
-        resource_type="tool_approval",
-        organization_id=organization_id,
-        user_id=current_user.id,
-        resource_id=str(approval.id),
-        details={
-            "tool_name": approval.tool_name,
-            "reason": "self_approval_not_allowed",
-        },
-    )
+        log_audit_event(
+            db=db,
+            event_type="authorization",
+            action="tool.self_rejection_denied",
+            outcome="denied",
+            resource_type="tool_approval",
+            organization_id=organization_id,
+            user_id=current_user.id,
+            resource_id=str(approval.id),
+            details={
+                "tool_name": approval.tool_name,
+                "reason": "self_rejection_not_allowed",
+            },
+        )
 
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail=(
-            "Users cannot approve their own "
-            "tool requests"
-        ),
-    )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Users cannot reject their own "
+                "tool requests"
+            ),
+        )
 
     try:
         approval = reject_tool_request(
