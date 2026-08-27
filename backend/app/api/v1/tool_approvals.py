@@ -297,6 +297,27 @@ def execute_tool_approval(
     )
 
     if not result.success:
+        log_audit_event(
+            db=db,
+            event_type="tool_execution",
+            action="tool.approval_execution_failed",
+            outcome="failed",
+            resource_type="tool_approval",
+            organization_id=organization_id,
+            user_id=current_user.id,
+            resource_id=str(approval.id),
+            details={
+                "tool_name": approval.tool_name,
+                "requested_by_user_id": str(
+                    approval.requested_by_user_id
+                ),
+                "error": (
+                    result.error
+                    or "Tool execution failed"
+                ),
+            },
+        )
+
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
