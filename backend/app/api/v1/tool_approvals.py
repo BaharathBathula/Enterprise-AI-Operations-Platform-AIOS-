@@ -151,7 +151,9 @@ def approve_tool_approval(
 
     log_audit_event(
         db=db,
+        event_type="tool_approval",
         action="tool.approved",
+        outcome="approved",
         resource_type="tool_approval",
         organization_id=organization_id,
         user_id=current_user.id,
@@ -220,7 +222,9 @@ def reject_tool_approval(
 
     log_audit_event(
         db=db,
+        event_type="tool_approval",
         action="tool.rejected",
+        outcome="rejected",
         resource_type="tool_approval",
         organization_id=organization_id,
         user_id=current_user.id,
@@ -303,7 +307,9 @@ def execute_tool_approval(
 
     log_audit_event(
         db=db,
+        event_type="tool_execution",
         action="tool.approval_executed",
+        outcome="success",
         resource_type="tool_approval",
         organization_id=organization_id,
         user_id=current_user.id,
