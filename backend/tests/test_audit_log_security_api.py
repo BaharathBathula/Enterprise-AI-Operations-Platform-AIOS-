@@ -74,7 +74,9 @@ def _create_audit_log(
     audit_log = AuditLog(
         organization_id=organization.id,
         user_id=user.id,
+        event_type="security",
         action=action,
+        outcome="success",
         resource_type="security_test",
         resource_id=resource_id,
         details={
@@ -189,6 +191,18 @@ def test_admin_can_read_organization_audit_logs(
     assert response.status_code == 200
 
     body = response.json()
+
+    audit_item = next(
+        item
+        for item in body
+        if item["id"] == str(audit_log.id)
+    )
+
+    assert audit_item["event_type"] == "security"
+    assert audit_item["outcome"] == "success"
+    assert audit_item["action"] == "security.admin.test"
+    assert audit_item["resource_type"] == "security_test"
+    assert audit_item["resource_id"] == "admin-resource"
 
     ids = {
         item["id"]
