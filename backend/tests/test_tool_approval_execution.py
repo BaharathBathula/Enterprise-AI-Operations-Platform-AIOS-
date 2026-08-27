@@ -249,19 +249,30 @@ def test_execute_propagates_tool_failure(
 
     mock_audit.assert_called_once()
 
-audit_call = mock_audit.call_args.kwargs
+    audit_call = mock_audit.call_args.kwargs
 
-assert audit_call["event_type"] == "tool_execution"
-assert audit_call["action"] == "tool.approval_execution_failed"
-assert audit_call["outcome"] == "failed"
-assert audit_call["resource_type"] == "tool_approval"
-assert audit_call["organization_id"] == organization_id
-assert audit_call["resource_id"] == str(approval.id)
+    assert audit_call["event_type"] == "tool_execution"
+    assert (
+        audit_call["action"]
+        == "tool.approval_execution_failed"
+    )
+    assert audit_call["outcome"] == "failed"
+    assert audit_call["resource_type"] == "tool_approval"
+    assert audit_call["organization_id"] == organization_id
+    assert audit_call["resource_id"] == str(
+        approval.id
+    )
 
-assert audit_call["details"]["tool_name"] == approval.tool_name
-assert audit_call["details"]["requested_by_user_id"] == str(
-    approval.requested_by_user_id
-)
-assert audit_call["details"]["error"] == (
-    "approval_arguments_mismatch"
-)
+    assert (
+        audit_call["details"]["tool_name"]
+        == approval.tool_name
+    )
+
+    assert (
+        audit_call["details"]["requested_by_user_id"]
+        == str(approval.requested_by_user_id)
+    )
+
+    assert audit_call["details"]["error"] == (
+        "approval_arguments_mismatch"
+    )
