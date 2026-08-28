@@ -34,7 +34,7 @@ services:
 
     environment:
       APP_NAME: Enterprise AI Operations Platform
-      APP_VERSION: 0.1.0
+      APP_VERSION: 1.0.0
       API_V1_PREFIX: /api/v1
       ENVIRONMENT: development
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-aios_user}:${POSTGRES_PASSWORD:-aios_password}@postgres:5432/${POSTGRES_DB:-aios}
