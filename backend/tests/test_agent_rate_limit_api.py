@@ -511,10 +511,10 @@ def test_allowed_agent_request_does_not_create_rate_limit_denial_audit(
     )
 
     result = MagicMock()
-    result.success = True
-    result.message = "Allowed"
-    result.error = None
-    result.data = None
+result.success = True
+result.message = "Allowed"
+result.error = None
+result.data = {}
 
     orchestrator_instance = MagicMock()
     orchestrator_instance.handle.return_value = result
