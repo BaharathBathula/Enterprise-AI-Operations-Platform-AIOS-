@@ -109,11 +109,7 @@ jobs:
           alembic upgrade head
           alembic current
 
-      - name: Run Ruff auto-fix check
-        run: |
-          ruff check app tests --fix
-
-      - name: Verify no Ruff violations remain
+      - name: Run Ruff checks
         run: |
           ruff check app tests
 
