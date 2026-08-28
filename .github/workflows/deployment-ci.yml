@@ -1,0 +1,28 @@
+name: Deployment CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - "feature/**"
+
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  deployment-validation:
+    name: Deployment Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose configuration
+        run: docker compose config --quiet
+
+      - name: Build backend container
+        run: docker build --tag aios-backend:ci ./backend
