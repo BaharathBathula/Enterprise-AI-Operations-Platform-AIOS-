@@ -10,7 +10,6 @@ from app.core.exceptions import (
 )
 from app.middleware.request_id import RequestIDMiddleware
 
-
 REQUEST_ID_HEADER = "X-Request-ID"
 
 

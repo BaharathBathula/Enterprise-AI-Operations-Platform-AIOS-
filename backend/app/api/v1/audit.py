@@ -13,7 +13,6 @@ from app.services.audit_service import (
     list_organization_audit_logs,
 )
 
-
 router = APIRouter(
     prefix="/organizations/{organization_id}/audit",
     tags=["Audit Logs"],

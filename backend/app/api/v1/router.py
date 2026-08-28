@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.api.v1.agent import router as agent_router
 from app.api.v1.audit import router as audit_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.chat import router as chat_router
@@ -8,6 +9,9 @@ from app.api.v1.conversations import (
 )
 from app.api.v1.documents import router as documents_router
 from app.api.v1.health import router as health_router
+from app.api.v1.incidents import (
+    router as incidents_router,
+)
 from app.api.v1.organization_members import (
     router as organization_members_router,
 )
@@ -18,10 +22,6 @@ from app.api.v1.tool_approvals import (
     router as tool_approvals_router,
 )
 from app.api.v1.users import router as users_router
-from app.api.v1.agent import router as agent_router
-from app.api.v1.incidents import (
-    router as incidents_router,
-)
 
 api_router = APIRouter()
 

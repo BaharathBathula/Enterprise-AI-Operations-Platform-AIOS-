@@ -1,8 +1,8 @@
 import uuid
 from datetime import timedelta
 
-from fastapi.testclient import TestClient
 import jwt
+from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.core.config import settings

@@ -32,7 +32,6 @@ from app.services.conversation_service import (
     list_user_conversations,
 )
 
-
 router = APIRouter(
     prefix="/organizations/{organization_id}/conversations",
     tags=["Conversations"],

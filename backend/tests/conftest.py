@@ -11,7 +11,6 @@ from app.db.base import Base
 from app.db.database import get_db
 from app.main import app
 
-
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
     "postgresql+psycopg2://postgres:postgres@localhost:5432/aios_test",

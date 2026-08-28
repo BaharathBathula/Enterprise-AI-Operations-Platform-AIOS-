@@ -15,7 +15,6 @@ from app.services.rate_limit_service import (
     RateLimitResult,
 )
 
-
 REQUEST_ID_HEADER = "X-Request-ID"
 
 

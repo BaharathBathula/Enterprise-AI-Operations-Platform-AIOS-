@@ -38,7 +38,6 @@ from app.services.retrieval_service import (
     retrieve_relevant_chunks,
 )
 
-
 router = APIRouter(
     prefix="/organizations/{organization_id}/chat",
     tags=["RAG Chat"],

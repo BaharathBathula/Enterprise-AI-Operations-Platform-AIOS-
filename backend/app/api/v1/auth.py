@@ -12,7 +12,6 @@ from app.services.user_service import (
     get_user_by_email,
 )
 
-
 router = APIRouter(
     prefix="/auth",
     tags=["Authentication"],

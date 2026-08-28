@@ -7,7 +7,6 @@ from redis.exceptions import RedisError
 
 from app.core.config import settings
 
-
 logger = logging.getLogger("app.rate_limit")
 
 

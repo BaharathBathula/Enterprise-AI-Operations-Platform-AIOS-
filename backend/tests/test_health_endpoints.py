@@ -4,7 +4,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.db.database import get_db
 from app.main import app
 
-
 REQUEST_ID_HEADER = "X-Request-ID"
 
 

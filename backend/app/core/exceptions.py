@@ -6,7 +6,6 @@ from fastapi.responses import JSONResponse
 
 from app.middleware.request_id import REQUEST_ID_HEADER
 
-
 logger = logging.getLogger("app.errors")
 
 

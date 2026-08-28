@@ -40,7 +40,6 @@ from app.services.membership_service import (
     update_member_role,
 )
 
-
 router = APIRouter(
     prefix=(
         "/organizations/"

@@ -19,7 +19,6 @@ from app.services.organization_service import (
     get_user_memberships,
 )
 
-
 router = APIRouter(
     prefix="/organizations",
     tags=["Organizations"],

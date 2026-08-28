@@ -30,7 +30,6 @@ from app.tools.default_registry import (
 )
 from app.tools.executor import ToolExecutor
 
-
 router = APIRouter(
     prefix="/organizations/{organization_id}/agent",
     tags=["Agent"],

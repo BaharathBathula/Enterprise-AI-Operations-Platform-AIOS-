@@ -4,7 +4,6 @@ import uuid
 
 from fastapi.testclient import TestClient
 
-
 REQUEST_ID_HEADER = "X-Request-ID"
 
 

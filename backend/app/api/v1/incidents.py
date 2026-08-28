@@ -34,7 +34,6 @@ from app.schemas.incident import (
     IncidentUpdate,
 )
 
-
 router = APIRouter(
     prefix=(
         "/organizations/"

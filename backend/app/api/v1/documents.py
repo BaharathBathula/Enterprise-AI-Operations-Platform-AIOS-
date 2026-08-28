@@ -44,7 +44,6 @@ from app.services.storage_service import (
     save_uploaded_file,
 )
 
-
 router = APIRouter(
     prefix="/organizations/{organization_id}/documents",
     tags=["Documents"],
