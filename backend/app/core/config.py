@@ -17,6 +17,19 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
     ENVIRONMENT: str = "development"
 
+    CORS_ORIGINS: str = (
+        "http://localhost:3000,"
+        "http://127.0.0.1:3000"
+    )
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [
+            origin.strip()
+            for origin in self.CORS_ORIGINS.split(",")
+            if origin.strip()
+        ]
+
     # Storage
     STORAGE_PATH: str = "storage"
 
@@ -103,6 +116,29 @@ class Settings(BaseSettings):
                 "DATABASE_URL must not use "
                 "development placeholder "
                 "credentials in production"
+            )
+
+        cors_origins = self.cors_origins
+
+        if not cors_origins:
+            raise ValueError(
+                "CORS_ORIGINS must contain at least "
+                "one trusted origin in production"
+            )
+
+        insecure_cors_origins = {
+            "*",
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        }
+
+        if any(
+            origin in insecure_cors_origins
+            for origin in cors_origins
+        ):
+            raise ValueError(
+                "CORS_ORIGINS must not use wildcard "
+                "or localhost origins in production"
             )
 
         return self
