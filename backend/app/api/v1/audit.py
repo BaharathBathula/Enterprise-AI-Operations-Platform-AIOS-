@@ -26,6 +26,16 @@ router = APIRouter(
 )
 def get_audit_logs(
     organization_id: uuid.UUID,
+    event_type: str | None = Query(
+        default=None,
+        min_length=1,
+        max_length=120,
+    ),
+    outcome: str | None = Query(
+        default=None,
+        min_length=1,
+        max_length=32,
+    ),
     limit: int = Query(
         default=100,
         ge=1,
@@ -39,5 +49,7 @@ def get_audit_logs(
     return list_organization_audit_logs(
         db=db,
         organization_id=organization_id,
+        event_type=event_type,
+        outcome=outcome,
         limit=limit,
     )
