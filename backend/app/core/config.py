@@ -17,6 +17,13 @@ class Settings(BaseSettings):
         "postgresql+psycopg2://aios_user:password@localhost:5432/aios"
     )
 
+    # Redis
+    REDIS_URL: str = "redis://localhost:6379/0"
+
+    RATE_LIMIT_ENABLED: bool = False
+    RATE_LIMIT_REQUESTS: int = 100
+    RATE_LIMIT_WINDOW_SECONDS: int = 60
+
     # OpenAI
     OPENAI_API_KEY: str = ""
 
