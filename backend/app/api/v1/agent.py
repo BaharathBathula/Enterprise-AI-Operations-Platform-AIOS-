@@ -21,6 +21,7 @@ from app.schemas.agent import (
     AgentRequest,
     AgentResponse,
 )
+from app.services.audit_service import log_audit_event
 from app.services.rate_limit_service import rate_limiter
 from app.tools.base import ToolExecutionContext
 from app.tools.default_registry import (
@@ -76,6 +77,23 @@ def run_agent(
             rate_limit_headers["Retry-After"] = str(
                 rate_limit_result.retry_after_seconds
             )
+
+        log_audit_event(
+            db=db,
+            event_type="authorization",
+            action="agent.rate_limit_denied",
+            outcome="denied",
+            resource_type="agent_execution",
+            organization_id=organization_id,
+            user_id=current_user.id,
+            details={
+                "limit": rate_limit_result.limit,
+                "remaining": rate_limit_result.remaining,
+                "retry_after_seconds": (
+                    rate_limit_result.retry_after_seconds
+                ),
+            },
+        )
 
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
