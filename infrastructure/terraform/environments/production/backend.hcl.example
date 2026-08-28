@@ -1,0 +1,3 @@
+bucket = "aios-terraform-state-<aws-account-id>-<aws-region>"
+key    = "environments/production/terraform.tfstate"
+region = "<aws-region>"
