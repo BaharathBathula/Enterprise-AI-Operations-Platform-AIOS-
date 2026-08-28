@@ -23,5 +23,7 @@ pgvector==0.4.1
 
 PyMuPDF==1.26.3
 
+redis==6.4.0
+
 ruff==0.12.7
 pytest-cov==6.2.1
