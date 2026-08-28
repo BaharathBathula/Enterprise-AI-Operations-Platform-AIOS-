@@ -249,6 +249,146 @@ def test_requester_cannot_approve_own_tool_request(
     }
 
 
+def test_self_approval_denial_creates_audit_log(
+    client: TestClient,
+    db_session: Session,
+):
+    requester = _create_user(
+        db_session,
+        "self-approval-audit@example.com",
+    )
+
+    organization = _create_organization(
+        db_session,
+        "Self Approval Audit Org",
+    )
+
+    _add_membership(
+        db_session,
+        organization,
+        requester,
+        OrganizationRole.admin,
+    )
+
+    approval = _create_approval(
+        db_session,
+        organization,
+        requester,
+    )
+
+    db_session.commit()
+
+    response = client.post(
+        (
+            f"/api/v1/organizations/"
+            f"{organization.id}/tool-approvals/"
+            f"{approval.id}/approve"
+        ),
+        headers=_auth_headers(requester),
+        json={
+            "review_note": "Attempt self approval",
+        },
+    )
+
+    assert response.status_code == 403
+
+    db_session.expire_all()
+
+    statement = select(AuditLog).where(
+        AuditLog.organization_id == organization.id,
+        AuditLog.resource_id == str(approval.id),
+        AuditLog.action == "tool.self_approval_denied",
+    )
+
+    audit_log = db_session.scalar(statement)
+
+    assert audit_log is not None
+    assert audit_log.event_type == "authorization"
+    assert audit_log.outcome == "denied"
+    assert audit_log.user_id == requester.id
+    assert audit_log.resource_type == "tool_approval"
+
+    assert audit_log.details is not None
+    assert (
+        audit_log.details["tool_name"]
+        == "create_incident"
+    )
+    assert (
+        audit_log.details["reason"]
+        == "self_approval_not_allowed"
+    )
+
+
+def test_self_rejection_denial_creates_audit_log(
+    client: TestClient,
+    db_session: Session,
+):
+    requester = _create_user(
+        db_session,
+        "self-rejection-audit@example.com",
+    )
+
+    organization = _create_organization(
+        db_session,
+        "Self Rejection Audit Org",
+    )
+
+    _add_membership(
+        db_session,
+        organization,
+        requester,
+        OrganizationRole.admin,
+    )
+
+    approval = _create_approval(
+        db_session,
+        organization,
+        requester,
+    )
+
+    db_session.commit()
+
+    response = client.post(
+        (
+            f"/api/v1/organizations/"
+            f"{organization.id}/tool-approvals/"
+            f"{approval.id}/reject"
+        ),
+        headers=_auth_headers(requester),
+        json={
+            "review_note": "Attempt self rejection",
+        },
+    )
+
+    assert response.status_code == 403
+
+    db_session.expire_all()
+
+    statement = select(AuditLog).where(
+        AuditLog.organization_id == organization.id,
+        AuditLog.resource_id == str(approval.id),
+        AuditLog.action == "tool.self_rejection_denied",
+    )
+
+    audit_log = db_session.scalar(statement)
+
+    assert audit_log is not None
+    assert audit_log.event_type == "authorization"
+    assert audit_log.outcome == "denied"
+    assert audit_log.user_id == requester.id
+    assert audit_log.resource_type == "tool_approval"
+
+    assert audit_log.details is not None
+    assert (
+        audit_log.details["tool_name"]
+        == "create_incident"
+    )
+    assert (
+        audit_log.details["reason"]
+        == "self_rejection_not_allowed"
+    )
+
+
 def test_different_admin_can_approve_tool_request(
     client: TestClient,
     db_session: Session,
