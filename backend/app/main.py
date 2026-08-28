@@ -4,6 +4,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.middleware.request_id import RequestIDMiddleware
+from app.middleware.request_logging import (
+    RequestLoggingMiddleware,
+)
 
 
 app = FastAPI(
@@ -13,6 +16,10 @@ app = FastAPI(
         "Enterprise AI platform for secure document intelligence, "
         "knowledge retrieval, and workflow automation."
     ),
+)
+
+app.add_middleware(
+    RequestLoggingMiddleware,
 )
 
 app.add_middleware(
