@@ -2,7 +2,7 @@ import uuid
 from datetime import timedelta
 
 from fastapi.testclient import TestClient
-from jose import jwt
+import jwt
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -139,9 +139,13 @@ def test_token_with_invalid_signature_is_rejected(
         )
     )
 
-    payload = jwt.get_unverified_claims(
-        legitimate_token
-    )
+    payload = jwt.decode(
+    legitimate_token,
+    options={
+        "verify_signature": False,
+        "verify_exp": False,
+    },
+)
 
     forged_token = jwt.encode(
         payload,
