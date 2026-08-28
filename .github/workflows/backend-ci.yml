@@ -111,6 +111,10 @@ jobs:
               f"pgvector extension: {vector_version}"
           )
           PY
+      - name: Verify Alembic migrations
+        run: |
+          alembic upgrade head
+          alembic current
 
 
       - name: Run Ruff auto-fix check
