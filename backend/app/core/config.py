@@ -1,9 +1,17 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Self
+
+from pydantic import model_validator
+from pydantic_settings import (
+    BaseSettings,
+    SettingsConfigDict,
+)
 
 
 class Settings(BaseSettings):
     # Application
-    APP_NAME: str = "Enterprise AI Operations Platform"
+    APP_NAME: str = (
+        "Enterprise AI Operations Platform"
+    )
     APP_VERSION: str = "0.1.0"
 
     API_V1_PREFIX: str = "/api/v1"
@@ -14,7 +22,8 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str = (
-        "postgresql+psycopg2://aios_user:password@localhost:5432/aios"
+        "postgresql+psycopg2://"
+        "aios_user:password@localhost:5432/aios"
     )
 
     # Redis
@@ -28,7 +37,9 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
 
     # Embeddings
-    EMBEDDING_MODEL: str = "text-embedding-3-small"
+    EMBEDDING_MODEL: str = (
+        "text-embedding-3-small"
+    )
     EMBEDDING_DIMENSIONS: int = 1536
 
     # Document Processing
@@ -43,6 +54,58 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str = ""
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
+    @model_validator(mode="after")
+    def validate_production_security(
+        self,
+    ) -> Self:
+        environment = (
+            self.ENVIRONMENT.strip().lower()
+        )
+
+        if environment not in {
+            "production",
+            "prod",
+        }:
+            return self
+
+        jwt_secret = self.JWT_SECRET_KEY.strip()
+
+        insecure_jwt_secrets = {
+            "",
+            "development-only-change-this-secret",
+            "replace-with-a-long-random-secret",
+        }
+
+        if (
+            len(jwt_secret) < 32
+            or jwt_secret in insecure_jwt_secrets
+        ):
+            raise ValueError(
+                "JWT_SECRET_KEY must be at least "
+                "32 characters and must not use "
+                "a development placeholder in "
+                "production"
+            )
+
+        insecure_database_markers = (
+            "replace-with-a-secure-password",
+            "aios_user:aios_password@",
+            "aios_user:password@",
+            "postgres:postgres@",
+        )
+
+        if any(
+            marker in self.DATABASE_URL
+            for marker in insecure_database_markers
+        ):
+            raise ValueError(
+                "DATABASE_URL must not use "
+                "development placeholder "
+                "credentials in production"
+            )
+
+        return self
 
     model_config = SettingsConfigDict(
         env_file=".env",
