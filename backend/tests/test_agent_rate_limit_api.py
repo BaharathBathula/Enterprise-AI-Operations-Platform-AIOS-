@@ -348,6 +348,19 @@ def test_allowed_agent_request_reaches_orchestrator(
     assert body["message"] == "Agent completed"
     assert body["error"] is None
 
+    assert response.headers[
+        "X-RateLimit-Limit"
+    ] == "100"
+
+    assert response.headers[
+        "X-RateLimit-Remaining"
+    ] == "99"
+
+    assert (
+        "Retry-After"
+        not in response.headers
+    )
+
     check_mock.assert_called_once_with(
         key=(
             f"agent:"
