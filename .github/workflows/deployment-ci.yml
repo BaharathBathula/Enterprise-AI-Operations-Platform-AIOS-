@@ -26,3 +26,30 @@ jobs:
 
       - name: Build backend container
         run: docker build --tag aios-backend:ci ./backend
+
+      - name: Start integration stack
+        run: |
+          docker compose up --build --detach --wait
+
+      - name: Verify running services
+        run: |
+          docker compose ps
+          docker compose ps --status running
+
+      - name: Verify backend runtime
+        run: |
+          curl --fail --silent --show-error \
+            http://localhost:8000/
+
+      - name: Verify backend API documentation
+        run: |
+          curl --fail --silent --show-error \
+            http://localhost:8000/openapi.json > /dev/null
+
+      - name: Show container logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Tear down integration stack
+        if: always()
+        run: docker compose down --volumes --remove-orphans
