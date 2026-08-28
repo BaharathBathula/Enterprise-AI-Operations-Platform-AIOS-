@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     APP_NAME: str = (
         "Enterprise AI Operations Platform"
     )
-    APP_VERSION: str = "0.1.0"
+    APP_VERSION: str = "1.0.0"
 
     API_V1_PREFIX: str = "/api/v1"
     ENVIRONMENT: str = "development"
