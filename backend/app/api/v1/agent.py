@@ -3,6 +3,8 @@ import uuid
 from fastapi import (
     APIRouter,
     Depends,
+    HTTPException,
+    status,
 )
 from sqlalchemy.orm import Session
 
@@ -18,6 +20,7 @@ from app.schemas.agent import (
     AgentRequest,
     AgentResponse,
 )
+from app.services.rate_limit_service import rate_limiter
 from app.tools.base import ToolExecutionContext
 from app.tools.default_registry import (
     create_default_tool_registry,
@@ -46,6 +49,39 @@ def run_agent(
     ),
     db: Session = Depends(get_db),
 ) -> AgentResponse:
+    rate_limit_result = rate_limiter.check(
+        key=(
+            f"agent:"
+            f"{organization_id}:"
+            f"{current_user.id}"
+        )
+    )
+
+    if not rate_limit_result.allowed:
+        headers = {}
+
+        if (
+            rate_limit_result.retry_after_seconds
+            is not None
+        ):
+            headers["Retry-After"] = str(
+                rate_limit_result.retry_after_seconds
+            )
+
+        headers["X-RateLimit-Limit"] = str(
+            rate_limit_result.limit
+        )
+
+        headers["X-RateLimit-Remaining"] = str(
+            rate_limit_result.remaining
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Rate limit exceeded",
+            headers=headers,
+        )
+
     registry = create_default_tool_registry()
 
     executor = ToolExecutor(
