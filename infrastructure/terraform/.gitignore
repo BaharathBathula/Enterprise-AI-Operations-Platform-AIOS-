@@ -24,3 +24,6 @@ override.tf.json
 
 # Local state lock metadata
 .terraform.tfstate.lock.info
+
+# Environment-specific backend configuration
+**/backend.hcl
