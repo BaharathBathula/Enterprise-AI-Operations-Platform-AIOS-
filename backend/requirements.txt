@@ -17,7 +17,7 @@ python-multipart==0.0.32
 httpx==0.28.1
 pytest==9.0.3
 
-openai>=1.98.0
+openai==3.5.0
 
 pgvector==0.4.1
 
