@@ -41,14 +41,26 @@ def list_organization_audit_logs(
     db: Session,
     *,
     organization_id: uuid.UUID,
+    event_type: str | None = None,
+    outcome: str | None = None,
     limit: int = 100,
 ) -> list[AuditLog]:
-    statement = (
-        select(AuditLog)
-        .where(
-            AuditLog.organization_id
-            == organization_id,
+    statement = select(AuditLog).where(
+        AuditLog.organization_id == organization_id,
+    )
+
+    if event_type is not None:
+        statement = statement.where(
+            AuditLog.event_type == event_type,
         )
+
+    if outcome is not None:
+        statement = statement.where(
+            AuditLog.outcome == outcome,
+        )
+
+    statement = (
+        statement
         .order_by(
             AuditLog.created_at.desc(),
         )
