@@ -53,6 +53,49 @@ The production milestone will establish secure remote state before application i
 
 Terraform state must never be committed to Git.
 
+## Remote State
+
+Production Terraform state uses the Amazon S3 backend.
+
+The backend configuration enables:
+
+- encrypted state storage
+- S3-native state locking
+- remote state persistence
+- state recovery through S3 versioning
+
+DynamoDB-based Terraform state locking is not used.
+
+The production backend declaration is located at:
+
+```text
+environments/production/backend.tf
+```
+
+Environment-specific backend values are supplied separately.
+
+Use the committed example:
+
+```text
+backend.hcl.example
+```
+
+to create a local:
+
+```text
+backend.hcl
+```
+
+The real `backend.hcl` file is excluded from source control.
+
+Once the remote-state bucket has been bootstrapped, initialization will use:
+
+```bash
+terraform init -backend-config=backend.hcl
+```
+
+AWS credentials must not be stored in the backend configuration.
+
 ## Credentials
 
 AWS credentials must not be committed to this repository.
