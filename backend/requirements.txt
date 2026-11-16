@@ -27,3 +27,5 @@ redis==6.4.0
 
 ruff==0.12.7
 pytest-cov==6.2.1
+
+langgraph==1.2.12
